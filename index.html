@@ -4,6 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>BRainrot Run 💀</title>
+
+  <!-- MediaPipe Face Mesh Dependencies -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
     body {
@@ -24,7 +29,7 @@
       height: 600px;
       background: #140924;
       border: 4px solid #ff00d4;
-      box-shadow: 0 0 20px #ff00d4, inset 0 0 20px #ff00d4;
+      box-shadow: 0 0 25px #ff00d4, inset 0 0 20px #ff00d4;
       overflow: hidden;
     }
 
@@ -47,7 +52,7 @@
     }
 
     .hud-box {
-      background: rgba(0, 0, 0, 0.7);
+      background: rgba(0, 0, 0, 0.85);
       border: 2px solid #00ffff;
       padding: 8px 16px;
       text-align: center;
@@ -83,8 +88,9 @@
       width: 100%;
       text-align: center;
       font-size: 9px;
-      background: rgba(0,0,0,0.8);
+      background: rgba(0,0,0,0.85);
       color: #ffe600;
+      padding: 2px 0;
     }
 
     /* Modals */
@@ -102,17 +108,17 @@
     }
 
     .title {
-      font-size: 48px;
+      font-size: 44px;
       font-weight: 900;
       color: #ffe600;
       text-shadow: 4px 4px 0 #ff00d4, -3px -3px 0 #00ffff;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
 
     .subtitle {
-      font-size: 14px;
+      font-size: 13px;
       color: #00ffff;
-      margin-bottom: 25px;
+      margin-bottom: 20px;
       letter-spacing: 1px;
     }
 
@@ -120,18 +126,18 @@
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 10px;
-      margin-bottom: 25px;
+      margin-bottom: 20px;
       width: 100%;
-      max-width: 500px;
+      max-width: 480px;
     }
 
     .instruction-box {
       background: #1a0b30;
-      border: 1px solid #444;
+      border: 1px solid #ff00d4;
       padding: 10px;
     }
 
-    .instruction-box b { display: block; font-size: 20px; color: #fff; margin-bottom: 5px;}
+    .instruction-box b { display: block; font-size: 22px; color: #ffe600; margin-bottom: 4px; }
     .instruction-box span { font-size: 11px; color: #aaa; }
 
     .btn {
@@ -140,26 +146,17 @@
       background: #ffe600;
       color: #000;
       font-weight: 900;
-      font-size: 20px;
-      padding: 14px 32px;
-      box-shadow: 5px 5px 0 #ff00d4, -3px -3px 0 #00ffff;
+      font-size: 18px;
+      padding: 12px 28px;
+      box-shadow: 4px 4px 0 #ff00d4, -2px -2px 0 #00ffff;
       transition: transform 0.1s;
       margin-top: 10px;
     }
 
     .btn:hover {
       transform: translate(2px, 2px);
-      box-shadow: 3px 3px 0 #ff00d4, -1px -1px 0 #00ffff;
+      box-shadow: 2px 2px 0 #ff00d4;
     }
-
-    .btn:disabled {
-      background: #555;
-      color: #888;
-      box-shadow: none;
-      cursor: not-allowed;
-    }
-
-    .hidden { display: none !important; }
   </style>
 </head>
 <body>
@@ -178,7 +175,7 @@
 
     <div id="webcam-container">
       <video id="webcam" autoplay playsinline muted></video>
-      <div class="cam-status" id="cam-status">CAMERA OFF</div>
+      <div class="cam-status" id="cam-status">INIT CAMERA...</div>
     </div>
 
     <canvas id="gameCanvas" width="800" height="600"></canvas>
@@ -186,35 +183,33 @@
     <!-- START MODAL -->
     <div class="modal" id="start-modal">
       <h1 class="title">BRainrot RUN 💀</h1>
-      <p class="subtitle">HOW LONG CAN YOUR BRAIN SURVIVE?</p>
+      <p class="subtitle">DODGE THE BRAINROT WITH YOUR HEAD!</p>
 
       <div class="instructions">
         <div class="instruction-box">
           <b>&larr;</b>
-          <span>HEAD LEFT</span>
+          <span>TILT LEFT</span>
         </div>
         <div class="instruction-box">
           <b>&bullet;</b>
-          <span>HEAD CENTER</span>
+          <span>CENTER</span>
         </div>
         <div class="instruction-box">
           <b>&rarr;</b>
-          <span>HEAD RIGHT</span>
+          <span>TILT RIGHT</span>
         </div>
       </div>
 
-      <p style="font-size: 12px; color: #888; margin-bottom: 15px;">Avoid the obstacles for 60 seconds.</p>
-
-      <button class="btn" id="cam-btn" onclick="requestCameraAccess()">📷 ALLOW CAMERA / UNLOCK GAME</button>
-      <button class="btn hidden" id="start-btn" onclick="startGame()">START RUN 💀</button>
-      <p style="font-size: 10px; color: #ff00d4; margin-top: 12px;" id="cam-note">Camera access is required each session</p>
+      <button class="btn" id="cam-btn" onclick="initMediaPipe()">📷 ENABLE CAMERA & START</button>
+      <button class="btn" id="start-btn" style="display: none;" onclick="startGame()">START RUN 💀</button>
+      <p style="font-size: 10px; color: #ff00d4; margin-top: 12px;" id="cam-note">Allow camera permissions when prompted</p>
     </div>
 
     <!-- GAME OVER MODAL -->
-    <div class="modal hidden" id="gameover-modal">
+    <div class="modal" id="gameover-modal" style="display: none;">
       <h1 class="title" style="color: #ff0055;">GAME OVER 💀</h1>
       <p class="subtitle" id="final-stats">SCORE: 0</p>
-      <button class="btn" onclick="resetToMenu()">MAIN MENU 🔄</button>
+      <button class="btn" onclick="resetToMenu()">PLAY AGAIN 🔄</button>
     </div>
   </div>
 
@@ -222,62 +217,89 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
-    let currentStream = null;
-    let cameraActive = false;
+    const videoElement = document.getElementById('webcam');
+    const camStatus = document.getElementById('cam-status');
+    const camBtn = document.getElementById('cam-btn');
+    const startBtn = document.getElementById('start-btn');
+
     let gameRunning = false;
     let playerLane = 1; // 0: Left, 1: Center, 2: Right
+    let targetX = 400;
+    let playerX = 400;
     let score = 0;
     let timeRemaining = 60.0;
     let lastTime = 0;
+    let obstacles = [];
+    let obstacleSpawnTimer = 0;
 
-    const camBtn = document.getElementById('cam-btn');
-    const startBtn = document.getElementById('start-btn');
-    const camStatus = document.getElementById('cam-status');
-    const video = document.getElementById('webcam');
+    const OBSTACLE_EMOJIS = ['🗿', '💀', '💩', '🤡', '🚽'];
 
-    // Enable/Prompt camera explicit user gesture
-    async function requestCameraAccess() {
-      stopCameraTracks(); // Ensure fresh request
+    // --- MEDIAPIPE FACE TRACKING SETUP ---
+    async function initMediaPipe() {
+      camStatus.innerText = "LOADING AI...";
+      
+      const faceMesh = new FaceMesh({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+      });
+
+      faceMesh.setOptions({
+        maxNumFaces: 1,
+        refineLandmarks: false,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+      });
+
+      faceMesh.onResults(onFaceResults);
+
+      const camera = new Camera(videoElement, {
+        onFrame: async () => {
+          await faceMesh.send({ image: videoElement });
+        },
+        width: 320,
+        height: 240
+      });
 
       try {
-        currentStream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 320, height: 240, facingMode: 'user' }
-        });
-        video.srcObject = currentStream;
-        cameraActive = true;
-        camStatus.innerText = "CAMERA ON";
+        await camera.start();
+        camStatus.innerText = "TRACKING READY";
         camStatus.style.color = "#00ffcc";
-
-        camBtn.classList.add('hidden');
-        startBtn.classList.remove('hidden');
-        document.getElementById('cam-note').innerText = "CAMERA CONNECTED! CLICK START RUN";
+        camBtn.style.display = 'none';
+        startBtn.style.display = 'inline-block';
+        document.getElementById('cam-note').innerText = "HEAD TRACKING ACTIVE! CLICK START";
       } catch (err) {
-        alert("Camera permission denied or device not found! Please allow camera access.");
-        console.error(err);
+        alert("Unable to access webcam. Please check permissions!");
+        camStatus.innerText = "CAM ERROR";
       }
     }
 
-    function stopCameraTracks() {
-      if (currentStream) {
-        currentStream.getTracks().forEach(track => track.stop());
-        currentStream = null;
+    function onFaceResults(results) {
+      if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) return;
+
+      const landmarks = results.multiFaceLandmarks[0];
+      // Landmark 1 is the tip of the nose
+      const noseX = landmarks[1].x; 
+
+      // Mirrored horizontal position (0.0 to 1.0)
+      const mirroredX = 1.0 - noseX;
+
+      // Determine lane based on nose offset thresholds
+      if (mirroredX < 0.42) {
+        playerLane = 0; // Left
+      } else if (mirroredX > 0.58) {
+        playerLane = 2; // Right
+      } else {
+        playerLane = 1; // Center
       }
-      cameraActive = false;
-      camStatus.innerText = "CAMERA OFF";
-      camStatus.style.color = "#ffe600";
     }
 
+    // --- GAME LOOP & LOGIC ---
     function startGame() {
-      if (!cameraActive) {
-        alert("Camera required!");
-        return;
-      }
-
-      document.getElementById('start-modal').classList.add('hidden');
-      document.getElementById('gameover-modal').classList.add('hidden');
+      document.getElementById('start-modal').style.display = 'none';
+      document.getElementById('gameover-modal').style.display = 'none';
 
       score = 0;
       timeRemaining = 60.0;
+      obstacles = [];
       gameRunning = true;
       lastTime = performance.now();
 
@@ -286,22 +308,26 @@
 
     function resetToMenu() {
       gameRunning = false;
-      stopCameraTracks(); // Force stop camera track so browser re-prompts/re-opens next run
-
-      startBtn.classList.add('hidden');
-      camBtn.classList.remove('hidden');
-      document.getElementById('cam-note').innerText = "Camera access is required each session";
-
-      document.getElementById('gameover-modal').classList.add('hidden');
-      document.getElementById('start-modal').classList.remove('hidden');
-      
+      document.getElementById('gameover-modal').style.display = 'none';
+      document.getElementById('start-modal').style.display = 'flex';
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
 
     function gameOver() {
       gameRunning = false;
       document.getElementById('final-stats').innerText = `FINAL SCORE: ${Math.floor(score)}`;
-      document.getElementById('gameover-modal').classList.remove('hidden');
+      document.getElementById('gameover-modal').style.display = 'flex';
+    }
+
+    function spawnObstacle() {
+      const lane = Math.floor(Math.random() * 3);
+      const emoji = OBSTACLE_EMOJIS[Math.floor(Math.random() * OBSTACLE_EMOJIS.length)];
+      obstacles.push({
+        lane: lane,
+        y: -50,
+        speed: 350 + Math.random() * 150,
+        emoji: emoji
+      });
     }
 
     function gameLoop(now) {
@@ -318,15 +344,26 @@
       }
 
       score += delta * 100;
-
       document.getElementById('timer').innerText = timeRemaining.toFixed(1);
       document.getElementById('score').innerText = Math.floor(score);
 
-      // Render simple game canvas
+      // Spawn Obstacles
+      obstacleSpawnTimer += delta;
+      if (obstacleSpawnTimer > 0.8) {
+        spawnObstacle();
+        obstacleSpawnTimer = 0;
+      }
+
+      // Smooth movement interpolating to current lane position
+      const laneWidth = canvas.width / 3;
+      targetX = playerLane * laneWidth + laneWidth / 2;
+      playerX += (targetX - playerX) * 0.2;
+
+      // Clear Canvas
       ctx.fillStyle = '#140924';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Render lanes
+      // Draw Lanes
       ctx.strokeStyle = '#ff00d4';
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -334,13 +371,43 @@
       ctx.moveTo((canvas.width / 3) * 2, 0); ctx.lineTo((canvas.width / 3) * 2, canvas.height);
       ctx.stroke();
 
-      // Render Player
-      const laneWidth = canvas.width / 3;
-      const playerX = playerLane * laneWidth + laneWidth / 2;
+      // Update & Draw Obstacles
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        let obs = obstacles[i];
+        obs.y += obs.speed * delta;
+
+        const obsX = obs.lane * laneWidth + laneWidth / 2;
+
+        ctx.font = '40px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(obs.emoji, obsX, obs.y);
+
+        // Collision Check
+        const playerY = canvas.height - 70;
+        if (Math.abs(obs.y - playerY) < 35 && obs.lane === playerLane) {
+          gameOver();
+          return;
+        }
+
+        // Remove Off-screen Obstacles
+        if (obs.y > canvas.height + 50) {
+          obstacles.splice(i, 1);
+        }
+      }
+
+      // Draw Player
       ctx.fillStyle = '#ffe600';
+      ctx.shadowColor = '#ff00d4';
+      ctx.shadowBlur = 15;
       ctx.beginPath();
-      ctx.arc(playerX, canvas.height - 80, 25, 0, Math.PI * 2);
+      ctx.arc(playerX, canvas.height - 70, 25, 0, Math.PI * 2);
       ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Draw Player Face Icon
+      ctx.font = '22px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('🏃', playerX, canvas.height - 62);
 
       requestAnimationFrame(gameLoop);
     }
