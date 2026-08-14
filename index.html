@@ -1,333 +1,572 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gesture Catch - Computer Vision Challenge</title>
-  
-  <!-- MediaPipe Hand Tracking Libraries -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Face Racer 🏎️ - Unhinged Head Shake</title>
+
+  <!-- MediaPipe Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
-
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
     body {
-      margin: 0;
-      padding: 0;
-      background: #090d16;
-      color: #ffffff;
-      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: #0f172a;
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      overflow: hidden;
     }
 
-    .title {
-      font-size: 28px;
-      font-weight: 800;
-      letter-spacing: 1px;
-      margin-bottom: 15px;
-      color: #38bdf8;
-      text-transform: uppercase;
-    }
-
-    #game-container {
-      position: relative;
-      width: 640px;
-      height: 480px;
-      box-shadow: 0 0 30px rgba(56, 189, 248, 0.2);
-      border-radius: 16px;
-      overflow: hidden;
-      border: 3px solid #38bdf8;
-    }
-
-    video {
-      display: none;
-    }
-
-    canvas {
+    /* Top HUD Header */
+    .hud-header {
       width: 100%;
-      height: 100%;
-      background-color: #0f172a;
-    }
-
-    #ui-overlay {
-      position: absolute;
-      top: 15px;
-      left: 15px;
-      right: 15px;
+      height: 90px;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(226, 232, 240, 0.8);
       display: flex;
       justify-content: space-between;
-      font-size: 18px;
-      font-weight: 700;
+      align-items: center;
+      padding: 0 28px;
+      z-index: 10;
+      color: #0f172a;
+    }
+
+    .logo-container { display: flex; flex-direction: column; }
+    .logo-title { font-size: 28px; font-weight: 900; color: #0f172a; line-height: 1; letter-spacing: -1px; }
+    .logo-sub { font-size: 11px; font-weight: 800; color: #ef4444; letter-spacing: 1.5px; margin-top: 4px; }
+
+    .score-container {
+      display: flex;
+      gap: 36px;
+      align-items: center;
+    }
+
+    .score-box { text-align: center; }
+    .score-value { font-size: 38px; font-weight: 900; color: #0f172a; line-height: 1; font-family: monospace; }
+    .max-score-value { font-size: 38px; font-weight: 900; color: #2563eb; line-height: 1; font-family: monospace; }
+    .score-label { font-size: 10px; font-weight: 700; color: #64748b; letter-spacing: 1px; }
+
+    .timer-card {
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 8px 18px;
+      text-align: center;
+    }
+    .timer-value { font-size: 24px; font-weight: 800; color: #0f172a; font-family: monospace; }
+
+    /* Main Split Screen Container */
+    #main-container {
+      display: flex;
+      width: 100vw;
+      height: calc(100vh - 130px);
+      position: relative;
+    }
+
+    /* Left Side: Camera Panel for Viral Recording */
+    .cam-panel {
+      flex: 1;
+      position: relative;
+      background: #000;
+      border-right: 4px solid #334155;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    .cam-panel video { display: none; }
+    .cam-panel canvas { width: 100%; height: 100%; object-fit: cover; }
+
+    .cam-label {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(239, 68, 68, 0.9);
+      color: white;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    /* Right Side: Game Track */
+    .game-panel {
+      flex: 1.2;
+      position: relative;
+      background: #1e293b;
+    }
+    .game-panel canvas { width: 100%; height: 100%; object-fit: cover; }
+
+    /* Meme Popup Effects */
+    #meme-popup {
+      position: absolute;
+      top: 30%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.5);
+      font-size: 44px;
+      font-weight: 900;
+      color: #ef4444;
+      text-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 20px #ffffff;
       pointer-events: none;
+      opacity: 0;
+      transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      z-index: 15;
+      white-space: nowrap;
+    }
+    #meme-popup.active {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1.1) rotate(-4deg);
+    }
+
+    /* Bottom Control Bar */
+    .bottom-bar {
+      width: 100%;
+      height: 40px;
+      background: rgba(255, 255, 255, 0.95);
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
       z-index: 10;
     }
+    .controls-text { font-size: 13px; font-weight: 700; color: #0f172a; letter-spacing: 0.5px; }
 
-    .badge {
-      background: rgba(15, 23, 42, 0.85);
-      backdrop-filter: blur(8px);
-      padding: 10px 18px;
-      border-radius: 30px;
-      border: 1px solid #334155;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-    }
-
-    #game-over-screen {
+    /* Start Overlay */
+    .overlay {
       position: absolute;
       inset: 0;
-      background: rgba(15, 23, 42, 0.92);
+      background: rgba(255, 255, 255, 0.96);
       backdrop-filter: blur(10px);
       display: flex;
       flex-direction: column;
-      align-items: center;
       justify-content: center;
+      align-items: center;
       z-index: 20;
+      color: #0f172a;
     }
 
-    #game-over-screen.hidden {
-      display: none;
-    }
-
-    h1 {
-      font-size: 44px;
-      margin: 0 0 10px 0;
-      color: #ef4444;
-      text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
-    }
-
-    .stat {
-      font-size: 22px;
-      margin: 6px 0;
-    }
-
-    button {
-      margin-top: 25px;
-      padding: 14px 36px;
-      font-size: 18px;
-      font-weight: bold;
-      color: white;
-      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    .start-btn {
+      background: #0f172a;
+      color: #ffffff;
       border: none;
-      border-radius: 30px;
+      padding: 16px 40px;
+      font-size: 18px;
+      font-weight: 800;
+      border-radius: 12px;
       cursor: pointer;
-      box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
-      transition: all 0.2s ease;
+      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.2);
     }
-
-    button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.6);
-    }
-
-    #instructions {
-      margin-top: 20px;
-      color: #94a3b8;
-      font-size: 15px;
-      text-align: center;
-    }
+    .start-btn:hover { background: #1e293b; }
   </style>
 </head>
 <body>
 
-  <div class="title">⚡ Vision Gesture Challenge ⚡</div>
-
-  <div id="game-container">
-    <video id="webcam" autoplay playsinline></video>
-    <canvas id="canvas" width="640" height="480"></canvas>
-
-    <div id="ui-overlay">
-      <div class="badge">Score: <span id="current-score" style="color: #38bdf8;">0</span></div>
-      <div class="badge">🏆 Best: <span id="high-score" style="color: #f59e0b;">0</span></div>
+  <!-- Top Translucent HUD Header -->
+  <div class="hud-header">
+    <div class="logo-container">
+      <span class="logo-title">FACE RACER 🏎️</span>
+      <span class="logo-sub">UNHINGED HEAD SHAKE EDITION</span>
     </div>
-
-    <div id="game-over-screen">
-      <h1>GAME OVER</h1>
-      <div class="stat">Score: <span id="final-score" style="color: #38bdf8;">0</span></div>
-      <div class="stat">High Score: <span id="best-score" style="color: #f59e0b;">0</span></div>
-      <button onclick="resetGame()">Play Again 🔄</button>
+    <div class="score-container">
+      <div class="score-box">
+        <div id="score" class="score-value">0</div>
+        <div class="score-label">DISTANCE METERS</div>
+      </div>
+      <div class="score-box">
+        <div id="max_score" class="max-score-value">0</div>
+        <div class="score-label">BEST MAX</div>
+      </div>
+    </div>
+    <div class="timer-card">
+      <div id="timer" class="timer-value">60.0</div>
+      <div class="score-label">FUEL TIME</div>
     </div>
   </div>
 
-  <div id="instructions">
-    ☝️ Move your <b>Index Finger Tip</b> to catch 🌟 <b>Golden Orbs (+10 pts)</b>.<br>
-    ⚠️ Avoid 💣 <b>Red Bombs</b> and don't let orbs fall past the bottom!
+  <!-- Split Screen Container -->
+  <div id="main-container">
+    <div id="meme-popup">UNHINGED SHAKE! 💀</div>
+
+    <!-- Left: Player Camera View -->
+    <div class="cam-panel">
+      <div class="cam-label">🔴 LIVE PLAYER CAM</div>
+      <video id="webcam" playsinline></video>
+      <canvas id="cam_canvas"></canvas>
+    </div>
+
+    <!-- Right: Arcade Game Track View -->
+    <div class="game-panel">
+      <canvas id="game_canvas"></canvas>
+    </div>
+
+    <!-- Start Overlay -->
+    <div id="start_overlay" class="overlay">
+      <h1 style="font-size: 40px; font-weight: 900; margin-bottom: 12px;">FACE RACER 🏎️</h1>
+      <p style="font-size: 16px; color: #64748b; margin-bottom: 28px; text-align: center; max-width: 480px;">
+        SHAKE YOUR HEAD FAST left and right to steer the car through tight traffic! Rapid head-shaking triggers TURBO BOOST! ⚡
+      </p>
+      <button class="start-btn" onclick="initAndStart()">ALLOW CAMERA & START</button>
+    </div>
+  </div>
+
+  <!-- Bottom Control Bar -->
+  <div class="bottom-bar">
+    <div id="status_text" class="controls-text">SPACE / TAP: START / RESTART &nbsp;&bull;&nbsp; SHAKE HEAD FAST LEFT/RIGHT TO STEER</div>
   </div>
 
   <script>
-    const videoElement = document.getElementById('webcam');
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
+    const ROUND_SECONDS = 60.0;
+    const MEME_TEXTS = ['UNHINGED SPEED! 💀', 'SKIBIDI TURBO! ⚡', 'HEAD SHAKE GOD! 🗿', 'MAX RIZZ DRIFT! 🏎️', 'TURBO BOOST! 🚀'];
 
-    const scoreEl = document.getElementById('current-score');
-    const highScoreEl = document.getElementById('high-score');
-    const finalScoreEl = document.getElementById('final-score');
-    const bestScoreEl = document.getElementById('best-score');
-    const gameOverScreen = document.getElementById('game-over-screen');
+    let videoElement = document.getElementById('webcam');
+    let camCanvas = document.getElementById('cam_canvas');
+    let camCtx = camCanvas.getContext('2d');
 
-    let score = 0;
-    let highScore = localStorage.getItem('cv_challenge_best') || 0;
-    highScoreEl.innerText = highScore;
+    let gameCanvas = document.getElementById('game_canvas');
+    let gameCtx = gameCanvas.getContext('2d');
 
-    let isGameOver = false;
-    
-    // Smooth Catcher Coordinates
-    let rawX = canvas.width / 2;
-    let rawY = canvas.height / 2;
-    let playerX = canvas.width / 2;
-    let playerY = canvas.height / 2;
+    let isGameRunning = false;
+    let cameraStarted = false;
+    let distanceScore = 0;
+    let maxScore = parseInt(localStorage.getItem('faceracer_max_score') || '0');
+    let fuelTime = ROUND_SECONDS;
+    let lastTime = 0;
 
-    // Objects
-    let items = [];
-    let speedMultiplier = 1;
+    // Tracking
+    let rawNoseX = 0.5, rawNoseY = 0.5;
+    let smoothNoseX = 0.5;
+    let lastNoseX = 0.5;
+    let headVelocity = 0;
 
-    function spawnItem() {
-      const isBomb = Math.random() < 0.25; // 25% chance of bomb
-      items.push({
-        x: Math.random() * (canvas.width - 60) + 30,
-        y: -20,
-        radius: isBomb ? 16 : 20,
-        speed: (Math.random() * 2 + 3) * speedMultiplier,
-        isBomb: isBomb
+    // Dynamics
+    let carSteerNorm = 0.5; // 0 to 1
+    let carSpeed = 240;
+    let roadOffset = 0;
+
+    let traffic = [];
+    let fuelCans = [];
+    let spawnTimer = 0;
+    let fuelSpawnTimer = 0;
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function playBeep(freq, type, duration) {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type || 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    }
+
+    document.getElementById('max_score').innerText = maxScore;
+
+    function showMemePopup(text) {
+      const popup = document.getElementById('meme-popup');
+      popup.innerText = text || MEME_TEXTS[Math.floor(Math.random() * MEME_TEXTS.length)];
+      popup.classList.add('active');
+      playBeep(640, 'triangle', 0.2);
+      setTimeout(() => popup.classList.remove('active'), 1200);
+    }
+
+    async function initAndStart() {
+      document.getElementById('start_overlay').style.display = 'none';
+
+      const faceMesh = new FaceMesh({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
       });
+
+      faceMesh.setOptions({
+        maxNumFaces: 1,
+        refineLandmarks: true,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+      });
+
+      faceMesh.onResults(onFaceResults);
+
+      const camera = new Camera(videoElement, {
+        onFrame: async () => {
+          await faceMesh.send({ image: videoElement });
+        },
+        width: 1280,
+        height: 720
+      });
+
+      try {
+        await camera.start();
+        cameraStarted = true;
+        resetGame();
+      } catch (e) {
+        alert("Camera access is needed!");
+      }
+    }
+
+    function onFaceResults(results) {
+      if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) return;
+      const nose = results.multiFaceLandmarks[0][1];
+
+      rawNoseX = 1.0 - nose.x; // Mirroring
+      rawNoseY = nose.y;
     }
 
     function resetGame() {
-      score = 0;
-      speedMultiplier = 1;
-      items = [];
-      scoreEl.innerText = score;
-      isGameOver = false;
-      gameOverScreen.classList.add('hidden');
+      distanceScore = 0;
+      fuelTime = ROUND_SECONDS;
+      traffic = [];
+      fuelCans = [];
+      spawnTimer = 0;
+      fuelSpawnTimer = 0;
+      isGameRunning = true;
+      lastTime = performance.now();
+
+      document.getElementById('score').innerText = '0';
+      document.getElementById('status_text').innerText = "SHAKE YOUR HEAD FAST TO STEER & BOOST!";
+
+      playBeep(440, 'sine', 0.15);
+      requestAnimationFrame(gameLoop);
     }
 
-    function endGame() {
-      isGameOver = true;
-      if (score > highScore) {
-        highScore = score;
-        localStorage.setItem('cv_challenge_best', highScore);
-        highScoreEl.innerText = highScore;
+    function gameOver(reason) {
+      isGameRunning = false;
+      playBeep(140, 'sawtooth', 0.4);
+
+      if (distanceScore > maxScore) {
+        maxScore = distanceScore;
+        localStorage.setItem('faceracer_max_score', maxScore);
+        document.getElementById('max_score').innerText = maxScore;
+        showMemePopup("NEW RECORD! 🏆");
       }
-      finalScoreEl.innerText = score;
-      bestScoreEl.innerText = highScore;
-      gameOverScreen.classList.remove('hidden');
+
+      document.getElementById('status_text').innerText = reason || "CRASHED! PRESS SPACE TO RESTART";
     }
 
-    function onResults(results) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    function spawnTraffic(roadLeft, roadWidth) {
+      const colors = ['#dc2626', '#16a34a', '#d97706', '#9333ea'];
+      const lane = Math.floor(Math.random() * 3);
+      const laneW = roadWidth / 3;
 
-      // Render webcam background faintly mirrored
-      ctx.save();
-      ctx.scale(-1, 1);
-      ctx.translate(-canvas.width, 0);
-      ctx.globalAlpha = 0.2;
-      ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-      ctx.restore();
+      traffic.push({
+        x: roadLeft + lane * laneW + laneW / 2,
+        y: -90,
+        w: 48,
+        h: 78,
+        speed: 120 + Math.random() * 100,
+        color: colors[Math.floor(Math.random() * colors.length)]
+      });
+    }
 
-      // Finger Detection (Landmark 8 = Index Finger Tip)
-      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-        const hand = results.multiHandLandmarks[0];
-        rawX = (1 - hand[8].x) * canvas.width; // Flip horizontally
-        rawY = hand[8].y * canvas.height;
+    function spawnFuel(roadLeft, roadWidth) {
+      const lane = Math.floor(Math.random() * 3);
+      const laneW = roadWidth / 3;
+
+      fuelCans.push({
+        x: roadLeft + lane * laneW + laneW / 2,
+        y: -60,
+        radius: 20
+      });
+    }
+
+    function gameLoop(now) {
+      // Resize Canvases
+      if (camCanvas.width !== camCanvas.parentElement.clientWidth || camCanvas.height !== camCanvas.parentElement.clientHeight) {
+        camCanvas.width = camCanvas.parentElement.clientWidth;
+        camCanvas.height = camCanvas.parentElement.clientHeight;
+      }
+      if (gameCanvas.width !== gameCanvas.parentElement.clientWidth || gameCanvas.height !== gameCanvas.parentElement.clientHeight) {
+        gameCanvas.width = gameCanvas.parentElement.clientWidth;
+        gameCanvas.height = gameCanvas.parentElement.clientHeight;
       }
 
-      // Smooth Movement Lerp
-      playerX += (rawX - playerX) * 0.3;
-      playerY += (rawY - playerY) * 0.3;
+      const delta = (now - lastTime) / 1000;
+      lastTime = now;
 
-      if (!isGameOver) {
-        // Draw Catcher (Glowing Ring)
-        ctx.beginPath();
-        ctx.arc(playerX, playerY, 22, 0, 2 * Math.PI);
-        ctx.fillStyle = '#38bdf8';
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = '#38bdf8';
-        ctx.fill();
-        ctx.shadowBlur = 0;
+      // High-sensitivity Head Steering
+      headVelocity = Math.abs(rawNoseX - lastNoseX) / delta;
+      lastNoseX = rawNoseX;
 
-        // Spawn logic
-        if (Math.random() < 0.04) {
-          spawnItem();
+      // Amplify head movements for crazy steering shifts
+      const amplifiedOffset = (rawNoseX - 0.5) * 2.2; 
+      const targetSteerNorm = Math.max(0, Math.min(1, 0.5 + amplifiedOffset));
+      carSteerNorm += (targetSteerNorm - carSteerNorm) * 0.35;
+
+      // Rapid head shake turbo detection
+      if (headVelocity > 2.2 && isGameRunning && Math.random() < 0.05) {
+        showMemePopup("UNHINGED BOOST! ⚡");
+      }
+
+      const targetSpeed = 260 + (headVelocity > 1.8 ? 160 : 0);
+      carSpeed += (targetSpeed - carSpeed) * 0.1;
+
+      if (isGameRunning) {
+        fuelTime -= delta;
+        if (fuelTime <= 0) {
+          fuelTime = 0;
+          gameOver("RAN OUT OF FUEL! ⛽");
+          return;
         }
 
-        // Process Objects
-        for (let i = items.length - 1; i >= 0; i--) {
-          let item = items[i];
-          item.y += item.speed;
+        distanceScore += Math.floor((carSpeed * delta) / 4);
+        document.getElementById('score').innerText = distanceScore;
+        document.getElementById('timer').innerText = fuelTime.toFixed(1);
 
-          // Render Objects
-          ctx.beginPath();
-          ctx.arc(item.x, item.y, item.radius, 0, 2 * Math.PI);
-          if (item.isBomb) {
-            ctx.fillStyle = '#ef4444';
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = '#ef4444';
-          } else {
-            ctx.fillStyle = '#f59e0b';
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = '#f59e0b';
-          }
-          ctx.fill();
-          ctx.shadowBlur = 0;
+        roadOffset = (roadOffset + carSpeed * delta) % 80;
 
-          // Collision Detection
-          let dist = Math.hypot(playerX - item.x, playerY - item.y);
-          if (dist < 22 + item.radius) {
-            if (item.isBomb) {
-              endGame();
-              break;
-            } else {
-              score += 10;
-              scoreEl.innerText = score;
-              speedMultiplier += 0.03; // Speed scales up smoothly
-              items.splice(i, 1);
-              continue;
-            }
-          }
-
-          // Missed star penalty (Bottom wall hit)
-          if (item.y > canvas.height + 20) {
-            if (!item.isBomb) {
-              endGame();
-              break;
-            } else {
-              items.splice(i, 1); // Safely drop bombs
-            }
-          }
+        spawnTimer += delta;
+        if (spawnTimer > 0.75) {
+          const roadW = Math.min(gameCanvas.width * 0.8, 380);
+          const roadL = (gameCanvas.width - roadW) / 2;
+          spawnTraffic(roadL, roadW);
+          spawnTimer = 0;
         }
+
+        fuelSpawnTimer += delta;
+        if (fuelSpawnTimer > 4.0) {
+          const roadW = Math.min(gameCanvas.width * 0.8, 380);
+          const roadL = (gameCanvas.width - roadW) / 2;
+          spawnFuel(roadL, roadW);
+          fuelSpawnTimer = 0;
+        }
+      }
+
+      // --- 1. RENDER LEFT PLAYER CAMERA PANEL ---
+      camCtx.save();
+      camCtx.translate(camCanvas.width, 0);
+      camCtx.scale(-1, 1);
+      camCtx.drawImage(videoElement, 0, 0, camCanvas.width, camCanvas.height);
+      camCtx.restore();
+
+      // Face tracking overlay box on camera
+      const nosePxX = rawNoseX * camCanvas.width;
+      const nosePxY = rawNoseY * camCanvas.height;
+
+      camCtx.strokeStyle = '#ef4444';
+      camCtx.lineWidth = 4;
+      camCtx.strokeRect(nosePxX - 50, nosePxY - 60, 100, 120);
+
+      camCtx.fillStyle = '#2563eb';
+      camCtx.beginPath();
+      camCtx.arc(nosePxX, nosePxY, 12, 0, Math.PI * 2);
+      camCtx.fill();
+
+      // --- 2. RENDER RIGHT GAME TRACK PANEL ---
+      const roadWidth = Math.min(gameCanvas.width * 0.8, 380);
+      const roadLeft = (gameCanvas.width - roadWidth) / 2;
+      const roadRight = roadLeft + roadWidth;
+
+      // Grass & Road
+      gameCtx.fillStyle = '#15803d';
+      gameCtx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
+
+      gameCtx.fillStyle = '#334155';
+      gameCtx.fillRect(roadLeft, 0, roadWidth, gameCanvas.height);
+
+      gameCtx.fillStyle = '#ef4444';
+      gameCtx.fillRect(roadLeft - 10, 0, 10, gameCanvas.height);
+      gameCtx.fillRect(roadRight, 0, 10, gameCanvas.height);
+
+      // Lanes
+      const laneW = roadWidth / 3;
+      gameCtx.strokeStyle = '#f8fafc';
+      gameCtx.lineWidth = 4;
+      gameCtx.setLineDash([24, 24]);
+      gameCtx.lineDashOffset = -roadOffset;
+
+      gameCtx.beginPath();
+      gameCtx.moveTo(roadLeft + laneW, 0); gameCtx.lineTo(roadLeft + laneW, gameCanvas.height);
+      gameCtx.moveTo(roadLeft + laneW * 2, 0); gameCtx.lineTo(roadLeft + laneW * 2, gameCanvas.height);
+      gameCtx.stroke();
+      gameCtx.setLineDash([]);
+
+      const carX = roadLeft + carSteerNorm * roadWidth;
+      const clampedCarX = Math.max(roadLeft + 25, Math.min(roadRight - 25, carX));
+      const carY = gameCanvas.height - 120;
+      const carW = 46, carH = 80;
+
+      // Fuel Cans
+      for (let i = fuelCans.length - 1; i >= 0; i--) {
+        let fuel = fuelCans[i];
+        if (isGameRunning) fuel.y += (carSpeed - 60) * delta;
+
+        gameCtx.font = '32px sans-serif';
+        gameCtx.textAlign = 'center';
+        gameCtx.fillText('⛽', fuel.x, fuel.y);
+
+        if (isGameRunning && Math.hypot(fuel.x - clampedCarX, fuel.y - carY) < 40) {
+          fuelTime = Math.min(ROUND_SECONDS, fuelTime + 8.0);
+          showMemePopup("+8s FUEL REFILL! ⛽");
+          playBeep(880, 'sine', 0.25);
+          fuelCans.splice(i, 1);
+        } else if (fuel.y > gameCanvas.height + 60) {
+          fuelCans.splice(i, 1);
+        }
+      }
+
+      // Traffic
+      for (let i = traffic.length - 1; i >= 0; i--) {
+        let t = traffic[i];
+        if (isGameRunning) t.y += (carSpeed - t.speed) * delta;
+
+        gameCtx.fillStyle = t.color;
+        gameCtx.beginPath();
+        gameCtx.roundRect(t.x - t.w / 2, t.y - t.h / 2, t.w, t.h, 8);
+        gameCtx.fill();
+
+        gameCtx.fillStyle = '#0f172a';
+        gameCtx.fillRect(t.x - t.w / 2 + 6, t.y - t.h / 2 + 12, t.w - 12, 16);
+
+        if (
+          isGameRunning &&
+          Math.abs(t.x - clampedCarX) < (t.w / 2 + carW / 2 - 6) &&
+          Math.abs(t.y - carY) < (t.h / 2 + carH / 2 - 8)
+        ) {
+          gameOver("CRASHED INTO TRAFFIC! 💥");
+        }
+
+        if (t.y > gameCanvas.height + 100) {
+          traffic.splice(i, 1);
+        }
+      }
+
+      // Player Car
+      gameCtx.fillStyle = '#2563eb';
+      gameCtx.beginPath();
+      gameCtx.roundRect(clampedCarX - carW / 2, carY - carH / 2, carW, carH, 10);
+      gameCtx.fill();
+
+      gameCtx.fillStyle = '#0f172a';
+      gameCtx.fillRect(clampedCarX - carW / 2 + 6, carY - carH / 2 + 14, carW - 12, 18);
+
+      if (isGameRunning) {
+        requestAnimationFrame(gameLoop);
       }
     }
 
-    // Initialize Hands Engine
-    const hands = new Hands({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' || e.code === 'KeyR') {
+        if (cameraStarted) resetGame();
+      }
     });
 
-    hands.setOptions({
-      maxNumHands: 1,
-      modelComplexity: 1,
-      minDetectionConfidence: 0.6,
-      minTrackingConfidence: 0.6
+    window.addEventListener('click', (e) => {
+      if (cameraStarted && !isGameRunning && e.target.tagName !== 'BUTTON') {
+        resetGame();
+      }
     });
-
-    hands.onResults(onResults);
-
-    // Initialize Camera Stream
-    const camera = new Camera(videoElement, {
-      onFrame: async () => {
-        await hands.send({ image: videoElement });
-      },
-      width: 640,
-      height: 480
-    });
-
-    camera.start();
   </script>
 </body>
 </html>
