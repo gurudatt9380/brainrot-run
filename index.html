@@ -82,6 +82,20 @@
     letter-spacing:1px; cursor:pointer;
   }
 
+  /* Debug readout — a plain (non-mirrored) HTML overlay so the numbers
+     read correctly. Watch this while you punch to see why a rep does
+     or doesn't count, and tune the thresholds below to match. */
+  #debugPanel{
+    position:absolute; left:14px; bottom:14px; z-index:7;
+    background:rgba(10,10,12,0.78); padding:10px 14px; border-radius:8px;
+    font-size:13px; font-family:'Consolas', monospace; line-height:1.7;
+    backdrop-filter:blur(4px); pointer-events:none; min-width:170px;
+  }
+  #debugPanel .row{ display:flex; justify-content:space-between; gap:14px; }
+  #debugPanel .extended{ color:#4dff88; font-weight:700; }
+  #debugPanel .retracted{ color:var(--dim); }
+  #debugPanel .lost{ color:#ff6b6b; }
+
   #permission{
     position:absolute; inset:0; background:var(--bg); display:flex; flex-direction:column;
     align-items:center; justify-content:center; gap:16px; z-index:20; padding:24px; text-align:center;
@@ -120,6 +134,10 @@
     <video id="webcam" autoplay playsinline muted></video>
     <canvas id="overlay"></canvas>
     <div id="flash"></div>
+    <div id="debugPanel">
+      <div class="row"><span>Left arm</span><span id="dbgLeft">—</span></div>
+      <div class="row"><span>Right arm</span><span id="dbgRight">—</span></div>
+    </div>
     <div id="centerMsg">
       PAUSED
       <span class="sub">SPACE / TAP to start</span>
@@ -175,6 +193,8 @@ const enableCamBtn = document.getElementById('enableCam');
 const permError = document.getElementById('permError');
 const camPickerWrap = document.getElementById('camPickerWrap');
 const camSelect = document.getElementById('camSelect');
+const dbgLeft = document.getElementById('dbgLeft');
+const dbgRight = document.getElementById('dbgRight');
 
 const DURATION = 45;
 const BEST_KEY = 'punchcounter_best';
@@ -186,45 +206,71 @@ let reps = 0;
 let best = Number(localStorage.getItem(BEST_KEY) || 0);
 let timeLeft = DURATION;
 let lastTs = performance.now();
-let rafId = null;
 
 bestVal.textContent = best;
 
+// ---- Per-arm punch state machine, driven by ELBOW ANGLE (3D) ----
+// A punch = arm swings from bent (guard/retracted) to straight
+// (extended) and back. Angle is scale- and direction-invariant, so
+// it works whether you punch sideways, up, or straight at the camera
+// (a straight-at-camera punch barely changes flat x/y wrist-shoulder
+// distance, which is why distance-based detection was missing punches).
 const arms = {
   left:  { state: 'retracted', cooldownUntil: 0 },
   right: { state: 'retracted', cooldownUntil: 0 }
 };
-const EXTEND_THRESH = 1.35;
-const RETRACT_THRESH = 0.95;
-const COOLDOWN_MS = 220;
 
-function torsoLength(lm){
-  const ls = lm[11], rs = lm[12], lh = lm[23], rh = lm[24];
-  const d1 = dist(ls, lh);
-  const d2 = dist(rs, rh);
-  return ((d1 + d2) / 2) || 0.2;
+// Tune these two if it's over/under-counting:
+const EXTEND_ANGLE = 150;   // degrees — arm counted "straight" above this
+const RETRACT_ANGLE = 110;  // degrees — must bend back below this to re-arm
+const COOLDOWN_MS = 200;    // minimum gap between counts on the same arm
+const MIN_VISIBILITY = 0.4; // ignore a landmark if the model isn't confident it's on-screen
+
+function angleAtJoint(a, b, c){
+  // angle at point b, formed by rays b->a and b->c, using x/y/z
+  const v1 = { x: a.x - b.x, y: a.y - b.y, z: (a.z||0) - (b.z||0) };
+  const v2 = { x: c.x - b.x, y: c.y - b.y, z: (c.z||0) - (b.z||0) };
+  const dot = v1.x*v2.x + v1.y*v2.y + v1.z*v2.z;
+  const mag1 = Math.hypot(v1.x, v1.y, v1.z);
+  const mag2 = Math.hypot(v2.x, v2.y, v2.z);
+  if (mag1 === 0 || mag2 === 0) return null;
+  const cos = Math.min(1, Math.max(-1, dot / (mag1 * mag2)));
+  return Math.acos(cos) * 180 / Math.PI;
 }
-function dist(a, b){
-  return Math.hypot(a.x - b.x, a.y - b.y);
+
+function visible(lm){
+  // tasks-vision landmarks expose `visibility` (0-1) when the model estimates it
+  return lm && (lm.visibility === undefined || lm.visibility >= MIN_VISIBILITY);
 }
 
 function processPunches(lm, now){
-  const scale = torsoLength(lm);
-  const pairs = {
-    left:  { shoulder: lm[11], wrist: lm[15] },
-    right: { shoulder: lm[12], wrist: lm[16] }
+  const joints = {
+    left:  { shoulder: lm[11], elbow: lm[13], wrist: lm[15] },
+    right: { shoulder: lm[12], elbow: lm[14], wrist: lm[16] }
   };
-  for (const side of ['left','right']){
-    const { shoulder, wrist } = pairs[side];
-    if (!shoulder || !wrist) continue;
-    const d = dist(shoulder, wrist) / scale;
-    const arm = arms[side];
 
-    if (arm.state === 'retracted' && d > EXTEND_THRESH && now > arm.cooldownUntil){
+  for (const side of ['left','right']){
+    const { shoulder, elbow, wrist } = joints[side];
+    const arm = arms[side];
+    const dbgEl = side === 'left' ? dbgLeft : dbgRight;
+
+    if (!shoulder || !elbow || !wrist || !visible(shoulder) || !visible(elbow) || !visible(wrist)){
+      dbgEl.textContent = 'not visible';
+      dbgEl.className = 'lost';
+      continue;
+    }
+
+    const angle = angleAtJoint(shoulder, elbow, wrist);
+    if (angle === null) continue;
+
+    dbgEl.textContent = Math.round(angle) + '°';
+    dbgEl.className = arm.state === 'extended' ? 'extended' : 'retracted';
+
+    if (arm.state === 'retracted' && angle > EXTEND_ANGLE && now > arm.cooldownUntil){
       arm.state = 'extended';
       arm.cooldownUntil = now + COOLDOWN_MS;
       countPunch();
-    } else if (arm.state === 'extended' && d < RETRACT_THRESH){
+    } else if (arm.state === 'extended' && angle < RETRACT_ANGLE){
       arm.state = 'retracted';
     }
   }
@@ -239,6 +285,7 @@ function countPunch(){
   if (navigator.vibrate) navigator.vibrate(30);
 }
 
+// ---- Camera handling ----
 let currentStream = null;
 let modelLoaded = false;
 
@@ -326,7 +373,7 @@ function resizeCanvas(){
 const drawingUtils = () => new DrawingUtils(ctx);
 
 function loop(ts){
-  rafId = requestAnimationFrame(loop);
+  requestAnimationFrame(loop);
   if (!poseLandmarker || video.readyState < 2) return;
   if (overlay.width !== video.videoWidth) resizeCanvas();
 
@@ -336,15 +383,16 @@ function loop(ts){
   if (result.landmarks && result.landmarks.length > 0){
     const lm = result.landmarks[0];
     const du = drawingUtils();
-    ctx.save();
-    ctx.strokeStyle = '#3ea6ff';
-    ctx.lineWidth = 3;
     du.drawConnectors(lm, PoseLandmarker.POSE_CONNECTIONS, { color: '#3ea6ff', lineWidth: 3 });
-    ctx.restore();
 
     if (running){
       processPunches(lm, ts);
     }
+  } else {
+    dbgLeft.textContent = 'no person';
+    dbgLeft.className = 'lost';
+    dbgRight.textContent = 'no person';
+    dbgRight.className = 'lost';
   }
 
   if (running){
