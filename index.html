@@ -141,7 +141,7 @@
     }
     .controls-text { font-size: 13px; font-weight: 600; color: #475569; letter-spacing: 0.5px; }
 
-    /* Overlay / Start screen */
+    /* Start Overlay */
     .overlay {
       position: absolute;
       inset: 0;
@@ -181,7 +181,7 @@
     <div class="hud-header">
       <div class="logo-container">
         <span class="logo-title">BRAINROT RUN</span>
-        <span class="logo-sub">HEAD DODGE CHALLENGE</span>
+        <span class="logo-sub">FREE NOSE DODGE</span>
       </div>
       <div class="score-container">
         <div class="score-box">
@@ -204,14 +204,14 @@
 
     <!-- Bottom Control Bar -->
     <div class="bottom-bar">
-      <div class="controls-text">SPACE / TAP: START / RESTART &nbsp;&nbsp;&nbsp;&nbsp; TILT HEAD LEFT / RIGHT TO DODGE</div>
+      <div class="controls-text">SPACE / TAP: START / RESTART &nbsp;&nbsp;&nbsp;&nbsp; MOVE YOUR HEAD FREELY IN ANY DIRECTION TO DODGE</div>
     </div>
 
     <!-- Start Overlay -->
     <div id="start_overlay" class="overlay">
       <h1 style="font-size: 42px; font-weight: 900; color: #0f172a; margin-bottom: 12px;">BRAINROT RUN 💀</h1>
-      <p style="font-size: 16px; color: #64748b; margin-bottom: 32px; text-align: center; max-width: 420px;">
-        Allow camera permissions, tilt your head left and right to dodge falling emojis!
+      <p style="font-size: 16px; color: #64748b; margin-bottom: 32px; text-align: center; max-width: 440px;">
+        Move your nose freely in 2D space to dodge falling brainrot emojis!
       </p>
       <button class="start-btn" onclick="initAndStart()">ALLOW CAMERA & START</button>
     </div>
@@ -233,18 +233,11 @@
     let timeRemaining = ROUND_SECONDS;
     let lastTime = 0;
 
-    let playerLane = 1; // 0: Left, 1: Center, 2: Right
-    let playerX = 0;
+    // 2D Target Coordinates
+    let rawNoseX = 0.5, rawNoseY = 0.5;
+    let smoothNoseX = 0.5, smoothNoseY = 0.5;
 
-    // Smoothed coordinates
-    let rawNoseX = 0.5;
-    let rawNoseY = 0.5;
-    let smoothNoseX = 0.5;
-    let smoothNoseY = 0.5;
-
-    let rawHeadBox = null;
-    let smoothHeadBox = null;
-
+    let rawHeadBox = null, smoothHeadBox = null;
     let obstacles = [];
     let spawnTimer = 0;
 
@@ -316,7 +309,7 @@
       const landmarks = results.multiFaceLandmarks[0];
       const nose = landmarks[1];
 
-      rawNoseX = 1.0 - nose.x; // Mirrored
+      rawNoseX = 1.0 - nose.x; // Mirror horizontally
       rawNoseY = nose.y;
 
       let minX = 1, maxX = 0, minY = 1, maxY = 0;
@@ -339,7 +332,7 @@
       lastTime = performance.now();
 
       document.getElementById('score').innerText = '0';
-      document.getElementById('status_pill').innerText = "RUNNING — TILT HEAD TO DODGE!";
+      document.getElementById('status_pill').innerText = "RUNNING — MOVE FREELY TO DODGE!";
       document.getElementById('status_pill').style.color = '#0f172a';
 
       playBeep(440, 'sine', 0.15);
@@ -362,13 +355,13 @@
     }
 
     function spawnObstacle() {
-      const lane = Math.floor(Math.random() * 3);
       const emoji = OBSTACLE_EMOJIS[Math.floor(Math.random() * OBSTACLE_EMOJIS.length)];
       obstacles.push({
-        lane: lane,
+        x: Math.random() * (canvas.width - 120) + 60,
         y: -60,
-        speed: 380 + Math.random() * 120,
-        emoji: emoji
+        speed: 360 + Math.random() * 180,
+        emoji: emoji,
+        radius: 34
       });
     }
 
@@ -381,8 +374,8 @@
       const delta = (now - lastTime) / 1000;
       lastTime = now;
 
-      // --- SMOOTHING FILTER (Exponential Moving Average) ---
-      const alpha = 0.15; // Smooths coordinate jitter
+      // Exponential Moving Average Smoothing Filter
+      const alpha = 0.22;
       smoothNoseX += (rawNoseX - smoothNoseX) * alpha;
       smoothNoseY += (rawNoseY - smoothNoseY) * alpha;
 
@@ -397,15 +390,9 @@
         }
       }
 
-      // --- HYSTERESIS LANE SWITCHING (Prevents Flickering) ---
-      if (playerLane === 1) { // Currently Center
-        if (smoothNoseX < 0.38) playerLane = 0;      // Switch Left
-        else if (smoothNoseX > 0.62) playerLane = 2; // Switch Right
-      } else if (playerLane === 0) { // Currently Left
-        if (smoothNoseX > 0.44) playerLane = 1;      // Return to Center
-      } else if (playerLane === 2) { // Currently Right
-        if (smoothNoseX < 0.56) playerLane = 1;      // Return to Center
-      }
+      const playerX = smoothNoseX * canvas.width;
+      const playerY = smoothNoseY * canvas.height;
+      const playerRadius = 26;
 
       if (isGameRunning) {
         timeRemaining -= delta;
@@ -420,7 +407,7 @@
         document.getElementById('timer').innerText = timeRemaining.toFixed(1);
 
         spawnTimer += delta;
-        if (spawnTimer > 0.75) {
+        if (spawnTimer > 0.45) {
           spawnObstacle();
           spawnTimer = 0;
         }
@@ -428,29 +415,18 @@
         if (Math.random() < 0.002) showMemePopup();
       }
 
-      // Render Camera Feed
+      // Render Video Canvas
       ctx.save();
       ctx.translate(canvas.width, 0);
       ctx.scale(-1, 1);
       ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
       ctx.restore();
 
-      // Dim background
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+      // Light backdrop overlay
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Draw Lane Dividers
-      const laneWidth = canvas.width / 3;
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
-      ctx.lineWidth = 3;
-      ctx.setLineDash([12, 12]);
-      ctx.beginPath();
-      ctx.moveTo(laneWidth, 0); ctx.lineTo(laneWidth, canvas.height);
-      ctx.moveTo(laneWidth * 2, 0); ctx.lineTo(laneWidth * 2, canvas.height);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      // Draw Smoothed Bounding Box
+      // Draw Head Tracking Bounding Box
       if (smoothHeadBox) {
         const hx = smoothHeadBox.minX * canvas.width;
         const hy = smoothHeadBox.minY * canvas.height;
@@ -460,38 +436,24 @@
         ctx.strokeStyle = '#2563eb';
         ctx.lineWidth = 3;
         ctx.strokeRect(hx, hy, hw, hh);
-
-        // Smoothed Nose Dot
-        ctx.fillStyle = '#ef4444';
-        ctx.beginPath();
-        ctx.arc(smoothNoseX * canvas.width, smoothNoseY * canvas.height, 8, 0, Math.PI * 2);
-        ctx.fill();
       }
 
-      // Smooth Runner Position
-      const targetX = playerLane * laneWidth + laneWidth / 2;
-      playerX += (targetX - playerX) * 0.2;
-
-      const playerY = canvas.height - 100;
-
-      // Update & Draw Obstacles
+      // Update & Render Obstacles
       for (let i = obstacles.length - 1; i >= 0; i--) {
         let obs = obstacles[i];
         if (isGameRunning) obs.y += obs.speed * delta;
 
-        const obsX = obs.lane * laneWidth + laneWidth / 2;
-
-        ctx.font = '54px sans-serif';
+        ctx.font = '56px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(obs.emoji, obsX, obs.y);
+        ctx.fillText(obs.emoji, obs.x, obs.y);
 
-        // Precise Collision Radius
-        if (isGameRunning && obs.lane === playerLane) {
-          const distY = Math.abs(obs.y - playerY);
-          const distX = Math.abs(obsX - playerX);
+        // Precise Distance-Based Circle Collision
+        if (isGameRunning) {
+          const dx = obs.x - playerX;
+          const dy = obs.y - playerY;
+          const distance = Math.hypot(dx, dy);
 
-          // Forgiving 28px hit zone threshold
-          if (distY < 32 && distX < 28) {
+          if (distance < (obs.radius + playerRadius)) {
             gameOver("HIT BY BRAINROT! 💀");
           }
         }
@@ -501,15 +463,16 @@
         }
       }
 
-      // Draw Runner Base
+      // Draw Free Floating Player Center (Nose Tracker)
       ctx.fillStyle = '#2563eb';
       ctx.beginPath();
-      ctx.arc(playerX, playerY, 32, 0, Math.PI * 2);
+      ctx.arc(playerX, playerY, playerRadius, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.font = '28px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('🏃', playerX, playerY + 9);
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(playerX, playerY, 8, 0, Math.PI * 2);
+      ctx.fill();
 
       if (isGameRunning) {
         requestAnimationFrame(gameLoop);
