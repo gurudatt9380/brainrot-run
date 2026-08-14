@@ -69,8 +69,8 @@
     }
 
     .score-box { text-align: center; }
-    .score-value { font-size: 46px; font-weight: 900; color: #0f172a; line-height: 1; font-mono: monospace; }
-    .max-score-value { font-size: 46px; font-weight: 900; color: #2563eb; line-height: 1; font-mono: monospace; }
+    .score-value { font-size: 46px; font-weight: 900; color: #0f172a; line-height: 1; font-family: monospace; }
+    .max-score-value { font-size: 46px; font-weight: 900; color: #2563eb; line-height: 1; font-family: monospace; }
     .score-label { font-size: 11px; font-weight: 700; color: #64748b; letter-spacing: 1px; margin-top: 2px; }
 
     .timer-card {
@@ -235,14 +235,20 @@
 
     let playerLane = 1; // 0: Left, 1: Center, 2: Right
     let playerX = 0;
-    let noseXNormalized = 0.5;
-    let noseYNormalized = 0.5;
-    let headBox = null;
+
+    // Smoothed coordinates
+    let rawNoseX = 0.5;
+    let rawNoseY = 0.5;
+    let smoothNoseX = 0.5;
+    let smoothNoseY = 0.5;
+
+    let rawHeadBox = null;
+    let smoothHeadBox = null;
 
     let obstacles = [];
     let spawnTimer = 0;
 
-    // Web Audio Synthesizers for Sound Effects
+    // Web Audio Synthesizer
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
     function playBeep(freq, type, duration) {
@@ -261,16 +267,14 @@
 
     document.getElementById('max_score').innerText = maxScore;
 
-    // Trigger Popup Effects for recording reaction clips
     function showMemePopup(text) {
       const popup = document.getElementById('meme-popup');
       popup.innerText = text || MEME_TEXTS[Math.floor(Math.random() * MEME_TEXTS.length)];
       popup.classList.add('active');
-      playBeep(587.33, 'triangle', 0.2); // Fun high chime
+      playBeep(587.33, 'triangle', 0.2);
       setTimeout(() => popup.classList.remove('active'), 1200);
     }
 
-    // Initialize MediaPipe Face Mesh
     async function initAndStart() {
       document.getElementById('start_overlay').style.display = 'none';
       document.getElementById('status_pill').innerText = "INITIALIZING CAMERA...";
@@ -282,8 +286,8 @@
       faceMesh.setOptions({
         maxNumFaces: 1,
         refineLandmarks: true,
-        minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5
+        minDetectionConfidence: 0.6,
+        minTrackingConfidence: 0.6
       });
 
       faceMesh.onResults(onFaceResults);
@@ -312,11 +316,9 @@
       const landmarks = results.multiFaceLandmarks[0];
       const nose = landmarks[1];
 
-      // Mirror horizontally
-      noseXNormalized = 1.0 - nose.x;
-      noseYNormalized = nose.y;
+      rawNoseX = 1.0 - nose.x; // Mirrored
+      rawNoseY = nose.y;
 
-      // Calculate bounding box for head overlay
       let minX = 1, maxX = 0, minY = 1, maxY = 0;
       landmarks.forEach(pt => {
         const mx = 1.0 - pt.x;
@@ -325,16 +327,7 @@
         if (pt.y < minY) minY = pt.y;
         if (pt.y > maxY) maxY = pt.y;
       });
-      headBox = { minX, maxX, minY, maxY };
-
-      // Determine Lane
-      if (noseXNormalized < 0.42) {
-        playerLane = 0; // Left
-      } else if (noseXNormalized > 0.58) {
-        playerLane = 2; // Right
-      } else {
-        playerLane = 1; // Center
-      }
+      rawHeadBox = { minX, maxX, minY, maxY };
     }
 
     function resetGame() {
@@ -355,7 +348,7 @@
 
     function gameOver(reason) {
       isGameRunning = false;
-      playBeep(150, 'sawtooth', 0.4); // Game over buzz
+      playBeep(150, 'sawtooth', 0.4);
 
       if (score > maxScore) {
         maxScore = score;
@@ -374,13 +367,12 @@
       obstacles.push({
         lane: lane,
         y: -60,
-        speed: 420 + Math.random() * 160,
+        speed: 380 + Math.random() * 120,
         emoji: emoji
       });
     }
 
     function gameLoop(now) {
-      // Resize canvas to match window view
       if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
@@ -388,6 +380,32 @@
 
       const delta = (now - lastTime) / 1000;
       lastTime = now;
+
+      // --- SMOOTHING FILTER (Exponential Moving Average) ---
+      const alpha = 0.15; // Smooths coordinate jitter
+      smoothNoseX += (rawNoseX - smoothNoseX) * alpha;
+      smoothNoseY += (rawNoseY - smoothNoseY) * alpha;
+
+      if (rawHeadBox) {
+        if (!smoothHeadBox) {
+          smoothHeadBox = { ...rawHeadBox };
+        } else {
+          smoothHeadBox.minX += (rawHeadBox.minX - smoothHeadBox.minX) * alpha;
+          smoothHeadBox.maxX += (rawHeadBox.maxX - smoothHeadBox.maxX) * alpha;
+          smoothHeadBox.minY += (rawHeadBox.minY - smoothHeadBox.minY) * alpha;
+          smoothHeadBox.maxY += (rawHeadBox.maxY - smoothHeadBox.maxY) * alpha;
+        }
+      }
+
+      // --- HYSTERESIS LANE SWITCHING (Prevents Flickering) ---
+      if (playerLane === 1) { // Currently Center
+        if (smoothNoseX < 0.38) playerLane = 0;      // Switch Left
+        else if (smoothNoseX > 0.62) playerLane = 2; // Switch Right
+      } else if (playerLane === 0) { // Currently Left
+        if (smoothNoseX > 0.44) playerLane = 1;      // Return to Center
+      } else if (playerLane === 2) { // Currently Right
+        if (smoothNoseX < 0.56) playerLane = 1;      // Return to Center
+      }
 
       if (isGameRunning) {
         timeRemaining -= delta;
@@ -401,29 +419,27 @@
         document.getElementById('score').innerText = score;
         document.getElementById('timer').innerText = timeRemaining.toFixed(1);
 
-        // Spawn logic
         spawnTimer += delta;
-        if (spawnTimer > 0.65) {
+        if (spawnTimer > 0.75) {
           spawnObstacle();
           spawnTimer = 0;
         }
 
-        // Periodic Meme popups for clips
-        if (Math.random() < 0.003) showMemePopup();
+        if (Math.random() < 0.002) showMemePopup();
       }
 
-      // Draw Camera Frame
+      // Render Camera Feed
       ctx.save();
       ctx.translate(canvas.width, 0);
       ctx.scale(-1, 1);
       ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
       ctx.restore();
 
-      // Dim Background Video for Readability
+      // Dim background
       ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Draw Clean Lane Lines
+      // Draw Lane Dividers
       const laneWidth = canvas.width / 3;
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
       ctx.lineWidth = 3;
@@ -434,23 +450,29 @@
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Draw Head Tracking Indicator
-      if (headBox) {
-        const hx = headBox.minX * canvas.width;
-        const hy = headBox.minY * canvas.height;
-        const hw = (headBox.maxX - headBox.minX) * canvas.width;
-        const hh = (headBox.maxY - headBox.minY) * canvas.height;
+      // Draw Smoothed Bounding Box
+      if (smoothHeadBox) {
+        const hx = smoothHeadBox.minX * canvas.width;
+        const hy = smoothHeadBox.minY * canvas.height;
+        const hw = (smoothHeadBox.maxX - smoothHeadBox.minX) * canvas.width;
+        const hh = (smoothHeadBox.maxY - smoothHeadBox.minY) * canvas.height;
 
         ctx.strokeStyle = '#2563eb';
         ctx.lineWidth = 3;
         ctx.strokeRect(hx, hy, hw, hh);
 
-        // Nose Dot
+        // Smoothed Nose Dot
         ctx.fillStyle = '#ef4444';
         ctx.beginPath();
-        ctx.arc(noseXNormalized * canvas.width, noseYNormalized * canvas.height, 8, 0, Math.PI * 2);
+        ctx.arc(smoothNoseX * canvas.width, smoothNoseY * canvas.height, 8, 0, Math.PI * 2);
         ctx.fill();
       }
+
+      // Smooth Runner Position
+      const targetX = playerLane * laneWidth + laneWidth / 2;
+      playerX += (targetX - playerX) * 0.2;
+
+      const playerY = canvas.height - 100;
 
       // Update & Draw Obstacles
       for (let i = obstacles.length - 1; i >= 0; i--) {
@@ -463,10 +485,15 @@
         ctx.textAlign = 'center';
         ctx.fillText(obs.emoji, obsX, obs.y);
 
-        // Collision Check
-        const playerY = canvas.height - 100;
-        if (isGameRunning && Math.abs(obs.y - playerY) < 45 && obs.lane === playerLane) {
-          gameOver("HIT BY BRAINROT! 💀");
+        // Precise Collision Radius
+        if (isGameRunning && obs.lane === playerLane) {
+          const distY = Math.abs(obs.y - playerY);
+          const distX = Math.abs(obsX - playerX);
+
+          // Forgiving 28px hit zone threshold
+          if (distY < 32 && distX < 28) {
+            gameOver("HIT BY BRAINROT! 💀");
+          }
         }
 
         if (obs.y > canvas.height + 60) {
@@ -474,12 +501,7 @@
         }
       }
 
-      // Smooth Player Movement
-      const targetX = playerLane * laneWidth + laneWidth / 2;
-      playerX += (targetX - playerX) * 0.25;
-
-      // Draw Player Base & Marker
-      const playerY = canvas.height - 100;
+      // Draw Runner Base
       ctx.fillStyle = '#2563eb';
       ctx.beginPath();
       ctx.arc(playerX, playerY, 32, 0, Math.PI * 2);
@@ -494,7 +516,6 @@
       }
     }
 
-    // Key & Touch Controls
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Space' || e.code === 'KeyR') {
         if (cameraStarted) resetGame();
