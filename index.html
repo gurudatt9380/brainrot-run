@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Brainrot Run 💀</title>
+  <title>Face Racer 🏎️ - Retro Road Fighter</title>
 
   <!-- MediaPipe Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
@@ -12,9 +12,9 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
     body {
-      background-color: #f8fafc;
-      color: #0f172a;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #0f172a;
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       overflow: hidden;
       width: 100vw;
       height: 100vh;
@@ -27,7 +27,7 @@
       position: relative;
       width: 100vw;
       height: 100vh;
-      background: #000;
+      background: #1e293b;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -36,14 +36,14 @@
     video { display: none; }
     canvas { width: 100%; height: 100%; object-fit: cover; }
 
-    /* Top Translucent White HUD Header */
+    /* Top Clean Translucent HUD Header */
     .hud-header {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
-      height: 110px;
-      background: rgba(255, 255, 255, 0.88);
+      height: 100px;
+      background: rgba(255, 255, 255, 0.92);
       backdrop-filter: blur(12px);
       border-bottom: 1px solid rgba(226, 232, 240, 0.8);
       display: flex;
@@ -51,12 +51,13 @@
       align-items: center;
       padding: 0 32px;
       z-index: 10;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      color: #0f172a;
     }
 
     .logo-container { display: flex; flex-direction: column; }
-    .logo-title { font-size: 34px; font-weight: 900; color: #0f172a; line-height: 1; letter-spacing: -1px; }
-    .logo-sub { font-size: 12px; font-weight: 700; color: #ef4444; letter-spacing: 1.5px; margin-top: 4px; }
+    .logo-title { font-size: 32px; font-weight: 900; color: #0f172a; line-height: 1; letter-spacing: -1px; }
+    .logo-sub { font-size: 11px; font-weight: 700; color: #ef4444; letter-spacing: 1.5px; margin-top: 4px; }
 
     .score-container {
       position: absolute;
@@ -69,8 +70,8 @@
     }
 
     .score-box { text-align: center; }
-    .score-value { font-size: 46px; font-weight: 900; color: #0f172a; line-height: 1; font-family: monospace; }
-    .max-score-value { font-size: 46px; font-weight: 900; color: #2563eb; line-height: 1; font-family: monospace; }
+    .score-value { font-size: 42px; font-weight: 900; color: #0f172a; line-height: 1; font-family: monospace; }
+    .max-score-value { font-size: 42px; font-weight: 900; color: #2563eb; line-height: 1; font-family: monospace; }
     .score-label { font-size: 11px; font-weight: 700; color: #64748b; letter-spacing: 1px; margin-top: 2px; }
 
     .timer-card {
@@ -81,19 +82,19 @@
       text-align: center;
       min-width: 130px;
     }
-    .timer-value { font-size: 28px; font-weight: 800; color: #0f172a; font-family: monospace; }
+    .timer-value { font-size: 26px; font-weight: 800; color: #0f172a; font-family: monospace; }
     .timer-label { font-size: 10px; font-weight: 700; color: #64748b; letter-spacing: 1px; }
 
-    /* Meme Popup Effects */
+    /* Meme / Event Popups */
     #meme-popup {
       position: absolute;
-      top: 40%;
+      top: 35%;
       left: 50%;
       transform: translate(-50%, -50%) scale(0.5);
-      font-size: 52px;
+      font-size: 48px;
       font-weight: 900;
       color: #ef4444;
-      text-shadow: 0 10px 30px rgba(0,0,0,0.3), 0 0 20px #ffffff;
+      text-shadow: 0 10px 30px rgba(0,0,0,0.4), 0 0 20px #ffffff;
       pointer-events: none;
       opacity: 0;
       transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -111,7 +112,7 @@
       bottom: 70px;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(255, 255, 255, 0.92);
+      background: rgba(255, 255, 255, 0.95);
       backdrop-filter: blur(8px);
       border: 1px solid #e2e8f0;
       color: #0f172a;
@@ -121,7 +122,7 @@
       font-weight: 700;
       letter-spacing: 0.5px;
       z-index: 10;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
       text-align: center;
     }
 
@@ -131,7 +132,7 @@
       bottom: 0;
       left: 0;
       width: 100%;
-      height: 48px;
+      height: 44px;
       background: rgba(255, 255, 255, 0.9);
       border-top: 1px solid #e2e8f0;
       display: flex;
@@ -145,13 +146,14 @@
     .overlay {
       position: absolute;
       inset: 0;
-      background: rgba(255, 255, 255, 0.95);
+      background: rgba(255, 255, 255, 0.96);
       backdrop-filter: blur(10px);
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
       z-index: 20;
+      color: #0f172a;
     }
 
     .start-btn {
@@ -175,18 +177,18 @@
     <video id="webcam" playsinline></video>
     <canvas id="output_canvas"></canvas>
 
-    <div id="meme-popup">MAX RIZZ! 🔥</div>
+    <div id="meme-popup">MAX SPEED! 🏎️</div>
 
-    <!-- Top Translucent Header HUD -->
+    <!-- Top Translucent HUD Header -->
     <div class="hud-header">
       <div class="logo-container">
-        <span class="logo-title">BRAINROT RUN</span>
-        <span class="logo-sub">FREE NOSE DODGE</span>
+        <span class="logo-title">FACE RACER</span>
+        <span class="logo-sub">RETRO ROAD FIGHTER</span>
       </div>
       <div class="score-container">
         <div class="score-box">
           <div id="score" class="score-value">0</div>
-          <div class="score-label">SCORE</div>
+          <div class="score-label">DIST METERS</div>
         </div>
         <div class="score-box">
           <div id="max_score" class="max-score-value">0</div>
@@ -195,7 +197,7 @@
       </div>
       <div class="timer-card">
         <div id="timer" class="timer-value">60.0</div>
-        <div class="timer-label">SECONDS</div>
+        <div class="timer-label">FUEL TIME</div>
       </div>
     </div>
 
@@ -204,14 +206,14 @@
 
     <!-- Bottom Control Bar -->
     <div class="bottom-bar">
-      <div class="controls-text">SPACE / TAP: START / RESTART &nbsp;&nbsp;&nbsp;&nbsp; MOVE YOUR HEAD FREELY IN ANY DIRECTION TO DODGE</div>
+      <div class="controls-text">LEAN HEAD LEFT / RIGHT TO STEER &nbsp;&bull;&nbsp; TILT UP / LEAN FORWARD TO ACCELERATE</div>
     </div>
 
     <!-- Start Overlay -->
     <div id="start_overlay" class="overlay">
-      <h1 style="font-size: 42px; font-weight: 900; color: #0f172a; margin-bottom: 12px;">BRAINROT RUN 💀</h1>
-      <p style="font-size: 16px; color: #64748b; margin-bottom: 32px; text-align: center; max-width: 440px;">
-        Move your nose freely in 2D space to dodge falling brainrot emojis!
+      <h1 style="font-size: 42px; font-weight: 900; color: #0f172a; margin-bottom: 12px;">FACE RACER 🏎️</h1>
+      <p style="font-size: 16px; color: #64748b; margin-bottom: 32px; text-align: center; max-width: 460px;">
+        Control your arcade car using your face! Tilt left & right to steer, tilt up/forward to boost speed, and dodge incoming traffic!
       </p>
       <button class="start-btn" onclick="initAndStart()">ALLOW CAMERA & START</button>
     </div>
@@ -219,8 +221,7 @@
 
   <script>
     const ROUND_SECONDS = 60.0;
-    const OBSTACLE_EMOJIS = ['🗿', '💀', '💩', '🤡', '🚽', '🔥', '🤓', '💅'];
-    const MEME_TEXTS = ['SKIBIDI DODGE! 🚽', 'MAX RIZZ! 🔥', 'OHIO MOVES! 💀', 'NO BRAINROT TODAY! 🗿', 'GIGA CHAD! 💪'];
+    const MEME_TEXTS = ['DRIFT GOD! 🚗💨', 'MAX SPEED! 🔥', 'DODGED! ⚡', 'GIGA CHAD DRIVER! 🗿', 'TURBO BOOST! 🚀'];
 
     let videoElement = document.getElementById('webcam');
     let canvas = document.getElementById('output_canvas');
@@ -228,20 +229,26 @@
 
     let isGameRunning = false;
     let cameraStarted = false;
-    let score = 0;
-    let maxScore = parseInt(localStorage.getItem('brainrot_max_score') || '0');
-    let timeRemaining = ROUND_SECONDS;
+    let distanceScore = 0;
+    let maxScore = parseInt(localStorage.getItem('faceracer_max_score') || '0');
+    let fuelTime = ROUND_SECONDS;
     let lastTime = 0;
 
-    // 2D Target Coordinates
+    // Smoothed Face Coordinates
     let rawNoseX = 0.5, rawNoseY = 0.5;
     let smoothNoseX = 0.5, smoothNoseY = 0.5;
 
-    let rawHeadBox = null, smoothHeadBox = null;
-    let obstacles = [];
-    let spawnTimer = 0;
+    // Player Car Dynamics
+    let carX = 0;
+    let carSpeed = 200; // pixels / sec base
+    let roadOffset = 0;
 
-    // Web Audio Synthesizer
+    let traffic = [];
+    let fuelCans = [];
+    let spawnTimer = 0;
+    let fuelSpawnTimer = 0;
+
+    // Audio FX Synthesizer
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
     function playBeep(freq, type, duration) {
@@ -250,7 +257,7 @@
       const gain = audioCtx.createGain();
       osc.type = type || 'sine';
       osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
       osc.connect(gain);
       gain.connect(audioCtx.destination);
@@ -264,7 +271,7 @@
       const popup = document.getElementById('meme-popup');
       popup.innerText = text || MEME_TEXTS[Math.floor(Math.random() * MEME_TEXTS.length)];
       popup.classList.add('active');
-      playBeep(587.33, 'triangle', 0.2);
+      playBeep(600, 'triangle', 0.2);
       setTimeout(() => popup.classList.remove('active'), 1200);
     }
 
@@ -305,34 +312,24 @@
 
     function onFaceResults(results) {
       if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) return;
+      const nose = results.multiFaceLandmarks[0][1];
 
-      const landmarks = results.multiFaceLandmarks[0];
-      const nose = landmarks[1];
-
-      rawNoseX = 1.0 - nose.x; // Mirror horizontally
+      rawNoseX = 1.0 - nose.x; // Mirroring horizontal
       rawNoseY = nose.y;
-
-      let minX = 1, maxX = 0, minY = 1, maxY = 0;
-      landmarks.forEach(pt => {
-        const mx = 1.0 - pt.x;
-        if (mx < minX) minX = mx;
-        if (mx > maxX) maxX = mx;
-        if (pt.y < minY) minY = pt.y;
-        if (pt.y > maxY) maxY = pt.y;
-      });
-      rawHeadBox = { minX, maxX, minY, maxY };
     }
 
     function resetGame() {
-      score = 0;
-      timeRemaining = ROUND_SECONDS;
-      obstacles = [];
+      distanceScore = 0;
+      fuelTime = ROUND_SECONDS;
+      traffic = [];
+      fuelCans = [];
       spawnTimer = 0;
+      fuelSpawnTimer = 0;
       isGameRunning = true;
       lastTime = performance.now();
 
       document.getElementById('score').innerText = '0';
-      document.getElementById('status_pill').innerText = "RUNNING — MOVE FREELY TO DODGE!";
+      document.getElementById('status_pill').innerText = "DRIVE! STEER LEFT/RIGHT WITH YOUR HEAD";
       document.getElementById('status_pill').style.color = '#0f172a';
 
       playBeep(440, 'sine', 0.15);
@@ -341,27 +338,42 @@
 
     function gameOver(reason) {
       isGameRunning = false;
-      playBeep(150, 'sawtooth', 0.4);
+      playBeep(140, 'sawtooth', 0.4);
 
-      if (score > maxScore) {
-        maxScore = score;
-        localStorage.setItem('brainrot_max_score', maxScore);
+      if (distanceScore > maxScore) {
+        maxScore = distanceScore;
+        localStorage.setItem('faceracer_max_score', maxScore);
         document.getElementById('max_score').innerText = maxScore;
-        showMemePopup("NEW HIGH SCORE! 🏆");
+        showMemePopup("NEW DISTANCE RECORD! 🏆");
       }
 
-      document.getElementById('status_pill').innerText = reason || "GAME OVER! PRESS SPACE TO RESTART";
+      document.getElementById('status_pill').innerText = reason || "OUT OF FUEL / CRASHED! PRESS SPACE";
       document.getElementById('status_pill').style.color = '#ef4444';
     }
 
-    function spawnObstacle() {
-      const emoji = OBSTACLE_EMOJIS[Math.floor(Math.random() * OBSTACLE_EMOJIS.length)];
-      obstacles.push({
-        x: Math.random() * (canvas.width - 120) + 60,
+    function spawnTraffic(roadLeft, roadWidth) {
+      const colors = ['#dc2626', '#16a34a', '#d97706', '#9333ea'];
+      const lane = Math.floor(Math.random() * 3);
+      const laneW = roadWidth / 3;
+
+      traffic.push({
+        x: roadLeft + lane * laneW + laneW / 2,
+        y: -90,
+        w: 44,
+        h: 75,
+        speed: 100 + Math.random() * 120,
+        color: colors[Math.floor(Math.random() * colors.length)]
+      });
+    }
+
+    function spawnFuel(roadLeft, roadWidth) {
+      const lane = Math.floor(Math.random() * 3);
+      const laneW = roadWidth / 3;
+
+      fuelCans.push({
+        x: roadLeft + lane * laneW + laneW / 2,
         y: -60,
-        speed: 360 + Math.random() * 180,
-        emoji: emoji,
-        radius: 34
+        radius: 20
       });
     }
 
@@ -374,105 +386,157 @@
       const delta = (now - lastTime) / 1000;
       lastTime = now;
 
-      // Exponential Moving Average Smoothing Filter
-      const alpha = 0.22;
+      // Exponential Moving Average Smoothing
+      const alpha = 0.2;
       smoothNoseX += (rawNoseX - smoothNoseX) * alpha;
       smoothNoseY += (rawNoseY - smoothNoseY) * alpha;
 
-      if (rawHeadBox) {
-        if (!smoothHeadBox) {
-          smoothHeadBox = { ...rawHeadBox };
-        } else {
-          smoothHeadBox.minX += (rawHeadBox.minX - smoothHeadBox.minX) * alpha;
-          smoothHeadBox.maxX += (rawHeadBox.maxX - smoothHeadBox.maxX) * alpha;
-          smoothHeadBox.minY += (rawHeadBox.minY - smoothHeadBox.minY) * alpha;
-          smoothHeadBox.maxY += (rawHeadBox.maxY - smoothHeadBox.maxY) * alpha;
-        }
-      }
+      // Calculate Road Bounds
+      const roadWidth = Math.min(canvas.width * 0.55, 480);
+      const roadLeft = (canvas.width - roadWidth) / 2;
+      const roadRight = roadLeft + roadWidth;
 
-      const playerX = smoothNoseX * canvas.width;
-      const playerY = smoothNoseY * canvas.height;
-      const playerRadius = 26;
+      // Throttle speed based on Head Pitch (tilt up/down)
+      const targetSpeed = 220 + Math.max(0, (0.55 - smoothNoseY) * 600);
+      carSpeed += (targetSpeed - carSpeed) * 0.1;
+
+      // Steering position mapped smoothly across road width
+      const targetCarX = roadLeft + smoothNoseX * roadWidth;
+      carX += (targetCarX - carX) * 0.25;
+      const clampedCarX = Math.max(roadLeft + 25, Math.min(roadRight - 25, carX));
 
       if (isGameRunning) {
-        timeRemaining -= delta;
-        if (timeRemaining <= 0) {
-          timeRemaining = 0;
-          gameOver("SURVIVED! MAX RIZZ 🗿");
+        fuelTime -= delta;
+        if (fuelTime <= 0) {
+          fuelTime = 0;
+          gameOver("RAN OUT OF FUEL! ⛽");
           return;
         }
 
-        score += Math.floor(delta * 100);
-        document.getElementById('score').innerText = score;
-        document.getElementById('timer').innerText = timeRemaining.toFixed(1);
+        distanceScore += Math.floor((carSpeed * delta) / 5);
+        document.getElementById('score').innerText = distanceScore;
+        document.getElementById('timer').innerText = fuelTime.toFixed(1);
 
+        roadOffset = (roadOffset + carSpeed * delta) % 80;
+
+        // Spawning Traffic & Fuel
         spawnTimer += delta;
-        if (spawnTimer > 0.45) {
-          spawnObstacle();
+        if (spawnTimer > 0.85) {
+          spawnTraffic(roadLeft, roadWidth);
           spawnTimer = 0;
         }
 
-        if (Math.random() < 0.002) showMemePopup();
+        fuelSpawnTimer += delta;
+        if (fuelSpawnTimer > 4.5) {
+          spawnFuel(roadLeft, roadWidth);
+          fuelSpawnTimer = 0;
+        }
       }
 
-      // Render Video Canvas
-      ctx.save();
-      ctx.translate(canvas.width, 0);
-      ctx.scale(-1, 1);
-      ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-      ctx.restore();
-
-      // Light backdrop overlay
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+      // Render Grass/Background
+      ctx.fillStyle = '#15803d';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Draw Head Tracking Bounding Box
-      if (smoothHeadBox) {
-        const hx = smoothHeadBox.minX * canvas.width;
-        const hy = smoothHeadBox.minY * canvas.height;
-        const hw = (smoothHeadBox.maxX - smoothHeadBox.minX) * canvas.width;
-        const hh = (smoothHeadBox.maxY - smoothHeadBox.minY) * canvas.height;
+      // Render Road
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(roadLeft, 0, roadWidth, canvas.height);
 
-        ctx.strokeStyle = '#2563eb';
-        ctx.lineWidth = 3;
-        ctx.strokeRect(hx, hy, hw, hh);
-      }
+      // Road Borders
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(roadLeft - 12, 0, 12, canvas.height);
+      ctx.fillRect(roadRight, 0, 12, canvas.height);
 
-      // Update & Render Obstacles
-      for (let i = obstacles.length - 1; i >= 0; i--) {
-        let obs = obstacles[i];
-        if (isGameRunning) obs.y += obs.speed * delta;
+      // White Lane Dividers (Animated Scrolling)
+      const laneW = roadWidth / 3;
+      ctx.strokeStyle = '#f8fafc';
+      ctx.lineWidth = 4;
+      ctx.setLineDash([24, 24]);
+      ctx.lineDashOffset = -roadOffset;
 
-        ctx.font = '56px sans-serif';
+      ctx.beginPath();
+      ctx.moveTo(roadLeft + laneW, 0); ctx.lineTo(roadLeft + laneW, canvas.height);
+      ctx.moveTo(roadLeft + laneW * 2, 0); ctx.lineTo(roadLeft + laneW * 2, canvas.height);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      const carY = canvas.height - 130;
+      const carW = 46, carH = 82;
+
+      // Update & Draw Fuel Cans
+      for (let i = fuelCans.length - 1; i >= 0; i--) {
+        let fuel = fuelCans[i];
+        if (isGameRunning) fuel.y += (carSpeed - 60) * delta;
+
+        ctx.font = '32px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(obs.emoji, obs.x, obs.y);
+        ctx.fillText('⛽', fuel.x, fuel.y);
 
-        // Precise Distance-Based Circle Collision
-        if (isGameRunning) {
-          const dx = obs.x - playerX;
-          const dy = obs.y - playerY;
-          const distance = Math.hypot(dx, dy);
-
-          if (distance < (obs.radius + playerRadius)) {
-            gameOver("HIT BY BRAINROT! 💀");
-          }
-        }
-
-        if (obs.y > canvas.height + 60) {
-          obstacles.splice(i, 1);
+        // Pickup Collision
+        if (isGameRunning && Math.hypot(fuel.x - clampedCarX, fuel.y - carY) < 40) {
+          fuelTime = Math.min(ROUND_SECONDS, fuelTime + 8.0);
+          showMemePopup("+8s FUEL REFILL! ⛽");
+          playBeep(880, 'sine', 0.25);
+          fuelCans.splice(i, 1);
+        } else if (fuel.y > canvas.height + 60) {
+          fuelCans.splice(i, 1);
         }
       }
 
-      // Draw Free Floating Player Center (Nose Tracker)
-      ctx.fillStyle = '#2563eb';
+      // Update & Draw Traffic
+      for (let i = traffic.length - 1; i >= 0; i--) {
+        let t = traffic[i];
+        if (isGameRunning) t.y += (carSpeed - t.speed) * delta;
+
+        // Draw Traffic Vehicle
+        ctx.fillStyle = t.color;
+        ctx.beginPath();
+        ctx.roundRect(t.x - t.w / 2, t.y - t.h / 2, t.w, t.h, 8);
+        ctx.fill();
+
+        // Windshield
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(t.x - t.w / 2 + 6, t.y - t.h / 2 + 12, t.w - 12, 16);
+
+        // AABB Collision Check
+        if (
+          isGameRunning &&
+          Math.abs(t.x - clampedCarX) < (t.w / 2 + carW / 2 - 6) &&
+          Math.abs(t.y - carY) < (t.h / 2 + carH / 2 - 8)
+        ) {
+          gameOver("CRASHED INTO TRAFFIC! 💥");
+        }
+
+        if (t.y > canvas.height + 100) {
+          traffic.splice(i, 1);
+        }
+      }
+
+      // Draw Player Sports Car
+      ctx.fillStyle = '#2563eb'; // Blue Player Car
       ctx.beginPath();
-      ctx.arc(playerX, playerY, playerRadius, 0, Math.PI * 2);
+      ctx.roundRect(clampedCarX - carW / 2, carY - carH / 2, carW, carH, 10);
       ctx.fill();
 
-      ctx.fillStyle = '#ffffff';
+      // Windshield
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(clampedCarX - carW / 2 + 6, carY - carH / 2 + 14, carW - 12, 18);
+
+      // PIP Live Webcam Video Head inside Driver Seat!
+      ctx.save();
       ctx.beginPath();
-      ctx.arc(playerX, playerY, 8, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.arc(clampedCarX, carY + 8, 16, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.translate(clampedCarX + 16, carY + 8 - 16);
+      ctx.scale(-1, 1);
+      ctx.drawImage(videoElement, 0, 0, 32, 32);
+      ctx.restore();
+
+      // Car Wheels
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(clampedCarX - carW / 2 - 4, carY - carH / 2 + 10, 5, 16);
+      ctx.fillRect(clampedCarX + carW / 2 - 1, carY - carH / 2 + 10, 5, 16);
+      ctx.fillRect(clampedCarX - carW / 2 - 4, carY + carH / 2 - 26, 5, 16);
+      ctx.fillRect(clampedCarX + carW / 2 - 1, carY + carH / 2 - 26, 5, 16);
 
       if (isGameRunning) {
         requestAnimationFrame(gameLoop);
