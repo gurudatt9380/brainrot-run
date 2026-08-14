@@ -1,333 +1,525 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gesture Catch - Computer Vision Challenge</title>
-  
-  <!-- MediaPipe Hand Tracking Libraries -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wing Flapper 🪽 - Body Vision Arcade</title>
+
+  <!-- MediaPipe Pose & Camera Utils -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
-
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
     body {
-      margin: 0;
-      padding: 0;
-      background: #090d16;
-      color: #ffffff;
-      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: #0f172a;
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      overflow: hidden;
     }
 
-    .title {
-      font-size: 28px;
-      font-weight: 800;
-      letter-spacing: 1px;
-      margin-bottom: 15px;
-      color: #38bdf8;
-      text-transform: uppercase;
-    }
-
-    #game-container {
-      position: relative;
-      width: 640px;
-      height: 480px;
-      box-shadow: 0 0 30px rgba(56, 189, 248, 0.2);
-      border-radius: 16px;
-      overflow: hidden;
-      border: 3px solid #38bdf8;
-    }
-
-    video {
-      display: none;
-    }
-
-    canvas {
+    /* HUD Header */
+    .hud-header {
       width: 100%;
-      height: 100%;
-      background-color: #0f172a;
-    }
-
-    #ui-overlay {
-      position: absolute;
-      top: 15px;
-      left: 15px;
-      right: 15px;
+      height: 85px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(226, 232, 240, 0.8);
       display: flex;
       justify-content: space-between;
-      font-size: 18px;
-      font-weight: 700;
+      align-items: center;
+      padding: 0 28px;
+      z-index: 10;
+      color: #0f172a;
+    }
+
+    .logo-container { display: flex; flex-direction: column; }
+    .logo-title { font-size: 28px; font-weight: 900; color: #0f172a; line-height: 1; letter-spacing: -1px; }
+    .logo-sub { font-size: 11px; font-weight: 800; color: #0284c7; letter-spacing: 1.5px; margin-top: 4px; }
+
+    .score-container { display: flex; gap: 36px; align-items: center; }
+    .score-box { text-align: center; }
+    .score-value { font-size: 38px; font-weight: 900; color: #0f172a; line-height: 1; font-family: monospace; }
+    .max-score-value { font-size: 38px; font-weight: 900; color: #0284c7; line-height: 1; font-family: monospace; }
+    .score-label { font-size: 10px; font-weight: 700; color: #64748b; letter-spacing: 1px; }
+
+    /* Main Split-Screen */
+    #main-container {
+      display: flex;
+      width: 100vw;
+      height: calc(100vh - 125px);
+      position: relative;
+    }
+
+    /* Left: Live Body Vision Camera */
+    .cam-panel {
+      flex: 1;
+      position: relative;
+      background: #000;
+      border-right: 4px solid #334155;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+    .cam-panel video { display: none; }
+    .cam-panel canvas { width: 100%; height: 100%; object-fit: cover; }
+
+    .cam-label {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(2, 132, 199, 0.9);
+      color: white;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    /* Right: 2D Arcade Game Track */
+    .game-panel {
+      flex: 1.3;
+      position: relative;
+      background: #0284c7;
+    }
+    .game-panel canvas { width: 100%; height: 100%; object-fit: cover; }
+
+    /* Popups */
+    #meme-popup {
+      position: absolute;
+      top: 30%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.5);
+      font-size: 42px;
+      font-weight: 900;
+      color: #38bdf8;
+      text-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 20px #ffffff;
       pointer-events: none;
+      opacity: 0;
+      transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      z-index: 15;
+      white-space: nowrap;
+    }
+    #meme-popup.active {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1.1) rotate(-3deg);
+    }
+
+    /* Bottom Control Bar */
+    .bottom-bar {
+      width: 100%;
+      height: 40px;
+      background: rgba(255, 255, 255, 0.95);
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
       z-index: 10;
     }
+    .controls-text { font-size: 13px; font-weight: 700; color: #0f172a; letter-spacing: 0.5px; }
 
-    .badge {
-      background: rgba(15, 23, 42, 0.85);
-      backdrop-filter: blur(8px);
-      padding: 10px 18px;
-      border-radius: 30px;
-      border: 1px solid #334155;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-    }
-
-    #game-over-screen {
+    /* Overlay */
+    .overlay {
       position: absolute;
       inset: 0;
-      background: rgba(15, 23, 42, 0.92);
+      background: rgba(255, 255, 255, 0.96);
       backdrop-filter: blur(10px);
       display: flex;
       flex-direction: column;
-      align-items: center;
       justify-content: center;
+      align-items: center;
       z-index: 20;
+      color: #0f172a;
     }
 
-    #game-over-screen.hidden {
-      display: none;
-    }
-
-    h1 {
-      font-size: 44px;
-      margin: 0 0 10px 0;
-      color: #ef4444;
-      text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
-    }
-
-    .stat {
-      font-size: 22px;
-      margin: 6px 0;
-    }
-
-    button {
-      margin-top: 25px;
-      padding: 14px 36px;
-      font-size: 18px;
-      font-weight: bold;
-      color: white;
-      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    .start-btn {
+      background: #0f172a;
+      color: #ffffff;
       border: none;
-      border-radius: 30px;
+      padding: 16px 40px;
+      font-size: 18px;
+      font-weight: 800;
+      border-radius: 12px;
       cursor: pointer;
-      box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
-      transition: all 0.2s ease;
+      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.2);
     }
-
-    button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.6);
-    }
-
-    #instructions {
-      margin-top: 20px;
-      color: #94a3b8;
-      font-size: 15px;
-      text-align: center;
-    }
+    .start-btn:hover { background: #1e293b; }
   </style>
 </head>
 <body>
 
-  <div class="title">⚡ Vision Gesture Challenge ⚡</div>
-
-  <div id="game-container">
-    <video id="webcam" autoplay playsinline></video>
-    <canvas id="canvas" width="640" height="480"></canvas>
-
-    <div id="ui-overlay">
-      <div class="badge">Score: <span id="current-score" style="color: #38bdf8;">0</span></div>
-      <div class="badge">🏆 Best: <span id="high-score" style="color: #f59e0b;">0</span></div>
+  <!-- Top HUD -->
+  <div class="hud-header">
+    <div class="logo-container">
+      <span class="logo-title">WING FLAPPER 🪽</span>
+      <span class="logo-sub">2D BODY VISION ARCADE</span>
     </div>
-
-    <div id="game-over-screen">
-      <h1>GAME OVER</h1>
-      <div class="stat">Score: <span id="final-score" style="color: #38bdf8;">0</span></div>
-      <div class="stat">High Score: <span id="best-score" style="color: #f59e0b;">0</span></div>
-      <button onclick="resetGame()">Play Again 🔄</button>
+    <div class="score-container">
+      <div class="score-box">
+        <div id="score" class="score-value">0</div>
+        <div class="score-label">PIPES PASSED</div>
+      </div>
+      <div class="score-box">
+        <div id="max_score" class="max-score-value">0</div>
+        <div class="score-label">HIGH SCORE</div>
+      </div>
     </div>
   </div>
 
-  <div id="instructions">
-    ☝️ Move your <b>Index Finger Tip</b> to catch 🌟 <b>Golden Orbs (+10 pts)</b>.<br>
-    ⚠️ Avoid 💣 <b>Red Bombs</b> and don't let orbs fall past the bottom!
+  <!-- Main Container -->
+  <div id="main-container">
+    <div id="meme-popup">NICE FLAP! 🪽</div>
+
+    <!-- Left Camera Panel -->
+    <div class="cam-panel">
+      <div class="cam-label">🔴 POSE VISION TRACKING</div>
+      <video id="webcam" playsinline></video>
+      <canvas id="cam_canvas"></canvas>
+    </div>
+
+    <!-- Right Game Panel -->
+    <div class="game-panel">
+      <canvas id="game_canvas"></canvas>
+    </div>
+
+    <!-- Start Overlay -->
+    <div id="start_overlay" class="overlay">
+      <h1 style="font-size: 40px; font-weight: 900; margin-bottom: 12px;">WING FLAPPER 🪽</h1>
+      <p style="font-size: 16px; color: #64748b; margin-bottom: 28px; text-align: center; max-width: 480px;">
+        Stand back so your camera sees your upper body. <strong>Flap your arms up and down</strong> like wings to fly and bypass obstacles!
+      </p>
+      <button class="start-btn" onclick="initAndStart()">ALLOW CAMERA & START</button>
+    </div>
+  </div>
+
+  <!-- Bottom Bar -->
+  <div class="bottom-bar">
+    <div id="status_text" class="controls-text">FLAP YOUR ARMS UP & DOWN TO FLY HIGHER &nbsp;&bull;&nbsp; PRESS SPACE TO RESTART</div>
   </div>
 
   <script>
-    const videoElement = document.getElementById('webcam');
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
+    let videoElement = document.getElementById('webcam');
+    let camCanvas = document.getElementById('cam_canvas');
+    let camCtx = camCanvas.getContext('2d');
 
-    const scoreEl = document.getElementById('current-score');
-    const highScoreEl = document.getElementById('high-score');
-    const finalScoreEl = document.getElementById('final-score');
-    const bestScoreEl = document.getElementById('best-score');
-    const gameOverScreen = document.getElementById('game-over-screen');
+    let gameCanvas = document.getElementById('game_canvas');
+    let gameCtx = gameCanvas.getContext('2d');
 
+    let isGameRunning = false;
+    let cameraStarted = false;
     let score = 0;
-    let highScore = localStorage.getItem('cv_challenge_best') || 0;
-    highScoreEl.innerText = highScore;
+    let maxScore = parseInt(localStorage.getItem('wingflapper_max_score') || '0');
+    let lastTime = 0;
 
-    let isGameOver = false;
-    
-    // Smooth Catcher Coordinates
-    let rawX = canvas.width / 2;
-    let rawY = canvas.height / 2;
-    let playerX = canvas.width / 2;
-    let playerY = canvas.height / 2;
+    // Body Tracking Variables
+    let leftWristY = 0.5, rightWristY = 0.5;
+    let leftShoulderY = 0.5, rightShoulderY = 0.5;
+    let prevAvgWristY = 0.5;
+    let flapVelocity = 0;
 
-    // Objects
-    let items = [];
-    let speedMultiplier = 1;
+    // Game Physics
+    let birdY = 200;
+    let birdVy = 0;
+    const gravity = 800; // px / sec^2
+    const flapImpulse = -320;
 
-    function spawnItem() {
-      const isBomb = Math.random() < 0.25; // 25% chance of bomb
-      items.push({
-        x: Math.random() * (canvas.width - 60) + 30,
-        y: -20,
-        radius: isBomb ? 16 : 20,
-        speed: (Math.random() * 2 + 3) * speedMultiplier,
-        isBomb: isBomb
+    let pipes = [];
+    let pipeSpawnTimer = 0;
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function playBeep(freq, type, duration) {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type || 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    }
+
+    document.getElementById('max_score').innerText = maxScore;
+
+    function showMemePopup(text) {
+      const popup = document.getElementById('meme-popup');
+      popup.innerText = text;
+      popup.classList.add('active');
+      playBeep(580, 'triangle', 0.15);
+      setTimeout(() => popup.classList.remove('active'), 1000);
+    }
+
+    async function initAndStart() {
+      document.getElementById('start_overlay').style.display = 'none';
+
+      const pose = new Pose({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
       });
+
+      pose.setOptions({
+        modelComplexity: 1,
+        smoothLandmarks: true,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+      });
+
+      pose.onResults(onPoseResults);
+
+      const camera = new Camera(videoElement, {
+        onFrame: async () => {
+          await pose.send({ image: videoElement });
+        },
+        width: 1280,
+        height: 720
+      });
+
+      try {
+        await camera.start();
+        cameraStarted = true;
+        resetGame();
+      } catch (e) {
+        alert("Camera permission required!");
+      }
+    }
+
+    function onPoseResults(results) {
+      if (!results.poseLandmarks) return;
+      const lm = results.poseLandmarks;
+
+      // Wrists: 15 (left wrist), 16 (right wrist)
+      // Shoulders: 11 (left shoulder), 12 (right shoulder)
+      leftWristY = lm[15].y;
+      rightWristY = lm[16].y;
+      leftShoulderY = lm[11].y;
+      rightShoulderY = lm[12].y;
+
+      // Draw pose lines on camera view
+      camCtx.save();
+      camCtx.translate(camCanvas.width, 0);
+      camCtx.scale(-1, 1);
+      camCtx.drawImage(videoElement, 0, 0, camCanvas.width, camCanvas.height);
+
+      // Draw Wing Lines
+      const w = camCanvas.width, h = camCanvas.height;
+      camCtx.strokeStyle = '#38bdf8';
+      camCtx.lineWidth = 6;
+
+      camCtx.beginPath();
+      // Left arm wing
+      camCtx.moveTo((1 - lm[11].x) * w, lm[11].y * h);
+      camCtx.lineTo((1 - lm[15].x) * w, lm[15].y * h);
+      // Right arm wing
+      camCtx.moveTo((1 - lm[12].x) * w, lm[12].y * h);
+      camCtx.lineTo((1 - lm[16].x) * w, lm[16].y * h);
+      camCtx.stroke();
+
+      camCtx.restore();
     }
 
     function resetGame() {
       score = 0;
-      speedMultiplier = 1;
-      items = [];
-      scoreEl.innerText = score;
-      isGameOver = false;
-      gameOverScreen.classList.add('hidden');
+      birdY = gameCanvas.height / 2 || 250;
+      birdVy = 0;
+      pipes = [];
+      pipeSpawnTimer = 0;
+      isGameRunning = true;
+      lastTime = performance.now();
+
+      document.getElementById('score').innerText = '0';
+      document.getElementById('status_text').innerText = "FLAP YOUR ARMS TO KEEP FLYING!";
+
+      playBeep(440, 'sine', 0.15);
+      requestAnimationFrame(gameLoop);
     }
 
-    function endGame() {
-      isGameOver = true;
-      if (score > highScore) {
-        highScore = score;
-        localStorage.setItem('cv_challenge_best', highScore);
-        highScoreEl.innerText = highScore;
+    function gameOver(reason) {
+      isGameRunning = false;
+      playBeep(150, 'sawtooth', 0.4);
+
+      if (score > maxScore) {
+        maxScore = score;
+        localStorage.setItem('wingflapper_max_score', maxScore);
+        document.getElementById('max_score').innerText = maxScore;
+        showMemePopup("NEW HIGH SCORE! 🏆");
       }
-      finalScoreEl.innerText = score;
-      bestScoreEl.innerText = highScore;
-      gameOverScreen.classList.remove('hidden');
+
+      document.getElementById('status_text').innerText = reason || "CRASHED! PRESS SPACE TO RESTART";
     }
 
-    function onResults(results) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    function spawnPipe() {
+      const gapHeight = 170;
+      const minPipeH = 60;
+      const maxPipeH = gameCanvas.height - gapHeight - minPipeH;
+      const topHeight = minPipeH + Math.random() * (maxPipeH - minPipeH);
 
-      // Render webcam background faintly mirrored
-      ctx.save();
-      ctx.scale(-1, 1);
-      ctx.translate(-canvas.width, 0);
-      ctx.globalAlpha = 0.2;
-      ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-      ctx.restore();
+      pipes.push({
+        x: gameCanvas.width + 60,
+        top: topHeight,
+        bottom: gameCanvas.height - topHeight - gapHeight,
+        passed: false
+      });
+    }
 
-      // Finger Detection (Landmark 8 = Index Finger Tip)
-      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-        const hand = results.multiHandLandmarks[0];
-        rawX = (1 - hand[8].x) * canvas.width; // Flip horizontally
-        rawY = hand[8].y * canvas.height;
+    function gameLoop(now) {
+      if (camCanvas.width !== camCanvas.parentElement.clientWidth || camCanvas.height !== camCanvas.parentElement.clientHeight) {
+        camCanvas.width = camCanvas.parentElement.clientWidth;
+        camCanvas.height = camCanvas.parentElement.clientHeight;
+      }
+      if (gameCanvas.width !== gameCanvas.parentElement.clientWidth || gameCanvas.height !== gameCanvas.parentElement.clientHeight) {
+        gameCanvas.width = gameCanvas.parentElement.clientWidth;
+        gameCanvas.height = gameCanvas.parentElement.clientHeight;
       }
 
-      // Smooth Movement Lerp
-      playerX += (rawX - playerX) * 0.3;
-      playerY += (rawY - playerY) * 0.3;
+      const delta = (now - lastTime) / 1000;
+      lastTime = now;
 
-      if (!isGameOver) {
-        // Draw Catcher (Glowing Ring)
-        ctx.beginPath();
-        ctx.arc(playerX, playerY, 22, 0, 2 * Math.PI);
-        ctx.fillStyle = '#38bdf8';
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = '#38bdf8';
-        ctx.fill();
-        ctx.shadowBlur = 0;
+      // Calculate Flap Motion
+      const currentAvgWristY = (leftWristY + rightWristY) / 2;
+      const wristSpeed = (currentAvgWristY - prevAvgWristY) / delta; 
+      prevAvgWristY = currentAvgWristY;
 
-        // Spawn logic
-        if (Math.random() < 0.04) {
-          spawnItem();
+      // Trigger flap when moving arms downwards fast
+      if (wristSpeed > 1.2 && isGameRunning) {
+        birdVy = flapImpulse;
+        playBeep(600, 'sine', 0.1);
+      }
+
+      if (isGameRunning) {
+        // Physics update
+        birdVy += gravity * delta;
+        birdY += birdVy * delta;
+
+        // Ground / Ceiling Collisions
+        if (birdY > gameCanvas.height - 25) {
+          birdY = gameCanvas.height - 25;
+          gameOver("CRASHED INTO GROUND! 💥");
+        }
+        if (birdY < 25) {
+          birdY = 25;
+          birdVy = 0;
         }
 
-        // Process Objects
-        for (let i = items.length - 1; i >= 0; i--) {
-          let item = items[i];
-          item.y += item.speed;
+        // Pipe Spawning & Updating
+        pipeSpawnTimer += delta;
+        if (pipeSpawnTimer > 2.2) {
+          spawnPipe();
+          pipeSpawnTimer = 0;
+        }
 
-          // Render Objects
-          ctx.beginPath();
-          ctx.arc(item.x, item.y, item.radius, 0, 2 * Math.PI);
-          if (item.isBomb) {
-            ctx.fillStyle = '#ef4444';
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = '#ef4444';
-          } else {
-            ctx.fillStyle = '#f59e0b';
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = '#f59e0b';
+        const birdX = 100;
+        const birdRadius = 22;
+
+        for (let i = pipes.length - 1; i >= 0; i--) {
+          let p = pipes[i];
+          p.x -= 160 * delta; // pipe speed
+
+          // Check passing score
+          if (!p.passed && p.x < birdX) {
+            p.passed = true;
+            score++;
+            document.getElementById('score').innerText = score;
+            showMemePopup("+1 POINT! 🪽");
           }
-          ctx.fill();
-          ctx.shadowBlur = 0;
 
-          // Collision Detection
-          let dist = Math.hypot(playerX - item.x, playerY - item.y);
-          if (dist < 22 + item.radius) {
-            if (item.isBomb) {
-              endGame();
-              break;
-            } else {
-              score += 10;
-              scoreEl.innerText = score;
-              speedMultiplier += 0.03; // Speed scales up smoothly
-              items.splice(i, 1);
-              continue;
+          // AABB Collision check
+          const pipeWidth = 60;
+          if (
+            birdX + birdRadius > p.x &&
+            birdX - birdRadius < p.x + pipeWidth
+          ) {
+            if (birdY - birdRadius < p.top || birdY + birdRadius > gameCanvas.height - p.bottom) {
+              gameOver("CRASHED INTO OBSTACLE! 💥");
             }
           }
 
-          // Missed star penalty (Bottom wall hit)
-          if (item.y > canvas.height + 20) {
-            if (!item.isBomb) {
-              endGame();
-              break;
-            } else {
-              items.splice(i, 1); // Safely drop bombs
-            }
+          if (p.x < -80) {
+            pipes.splice(i, 1);
           }
         }
       }
+
+      // --- RENDER 2D ARCADE WORLD ---
+      // Sky Background
+      gameCtx.fillStyle = '#38bdf8';
+      gameCtx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
+
+      // Clouds
+      gameCtx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      gameCtx.beginPath();
+      gameCtx.arc(120, 100, 40, 0, Math.PI * 2);
+      gameCtx.arc(160, 90, 50, 0, Math.PI * 2);
+      gameCtx.arc(320, 150, 45, 0, Math.PI * 2);
+      gameCtx.fill();
+
+      // Pipes
+      gameCtx.fillStyle = '#22c55e';
+      gameCtx.strokeStyle = '#15803d';
+      gameCtx.lineWidth = 4;
+
+      pipes.forEach(p => {
+        // Top Pipe
+        gameCtx.fillRect(p.x, 0, 60, p.top);
+        gameCtx.strokeRect(p.x, 0, 60, p.top);
+
+        // Bottom Pipe
+        gameCtx.fillRect(p.x, gameCanvas.height - p.bottom, 60, p.bottom);
+        gameCtx.strokeRect(p.x, gameCanvas.height - p.bottom, 60, p.bottom);
+      });
+
+      // Player Bird
+      const birdX = 100;
+      gameCtx.fillStyle = '#facc15'; // Yellow Flapper Body
+      gameCtx.beginPath();
+      gameCtx.arc(birdX, birdY, 22, 0, Math.PI * 2);
+      gameCtx.fill();
+
+      // Eye & Beak
+      gameCtx.fillStyle = '#0f172a';
+      gameCtx.beginPath();
+      gameCtx.arc(birdX + 10, birdY - 6, 4, 0, Math.PI * 2);
+      gameCtx.fill();
+
+      gameCtx.fillStyle = '#f97316';
+      gameCtx.beginPath();
+      gameCtx.moveTo(birdX + 16, birdY);
+      gameCtx.lineTo(birdX + 30, birdY + 5);
+      gameCtx.lineTo(birdX + 16, birdY + 10);
+      gameCtx.closePath();
+      gameCtx.fill();
+
+      // Wing (animates up/down based on velocity)
+      gameCtx.fillStyle = '#eab308';
+      gameCtx.beginPath();
+      const wingYOffset = birdVy < 0 ? -12 : 8;
+      gameCtx.ellipse(birdX - 6, birdY + wingYOffset, 12, 6, Math.PI / 4, 0, Math.PI * 2);
+      gameCtx.fill();
+
+      if (isGameRunning) {
+        requestAnimationFrame(gameLoop);
+      }
     }
 
-    // Initialize Hands Engine
-    const hands = new Hands({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' || e.code === 'KeyR') {
+        if (cameraStarted) resetGame();
+      }
     });
 
-    hands.setOptions({
-      maxNumHands: 1,
-      modelComplexity: 1,
-      minDetectionConfidence: 0.6,
-      minTrackingConfidence: 0.6
+    window.addEventListener('click', (e) => {
+      if (cameraStarted && !isGameRunning && e.target.tagName !== 'BUTTON') {
+        resetGame();
+      }
     });
-
-    hands.onResults(onResults);
-
-    // Initialize Camera Stream
-    const camera = new Camera(videoElement, {
-      onFrame: async () => {
-        await hands.send({ image: videoElement });
-      },
-      width: 640,
-      height: 480
-    });
-
-    camera.start();
   </script>
 </body>
 </html>
