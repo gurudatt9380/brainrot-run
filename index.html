@@ -1,525 +1,442 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Wing Flapper 🪽 - Body Vision Arcade</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Punch Counter — 45s Challenge</title>
+<style>
+  :root{
+    --bg:#0b0d10;
+    --bar:#15181c;
+    --accent:#ff8a1e;
+    --white:#f4f5f6;
+    --dim:#9aa0a6;
+    --line:#3ea6ff;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; height:100%; background:var(--bg);
+    font-family:'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif;
+    color:var(--white); overflow:hidden;
+  }
+  #app{ position:relative; width:100vw; height:100vh; display:flex; flex-direction:column; }
 
-  <!-- MediaPipe Pose & Camera Utils -->
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+  #topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    background:var(--bar); padding:14px 28px; z-index:5;
+    border-bottom:1px solid #21252b;
+  }
+  .stat{ text-align:center; }
+  .stat .label{ font-size:11px; letter-spacing:1.5px; color:var(--dim); text-transform:uppercase; margin-top:2px;}
+  .stat .value{ font-size:clamp(28px,5vw,44px); font-weight:800; line-height:1; }
+  #title-stat .value{ color:var(--accent); font-size:clamp(22px,4vw,34px); }
+  #reps-stat .value{ color:var(--white); }
+  #best-stat .value{ color:var(--accent); font-size:clamp(22px,4vw,34px); }
+  #timer-stat .value{ color:var(--white); font-variant-numeric:tabular-nums; }
+  #timer-stat.low .value{ color:#ff4d4d; }
 
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
-    body {
-      background-color: #0f172a;
-      color: #f8fafc;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      overflow: hidden;
-      width: 100vw;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
+  #stage{ position:relative; flex:1; overflow:hidden; background:#000; }
+  #webcam, #overlay{
+    position:absolute; top:50%; left:50%;
+    transform:translate(-50%,-50%) scaleX(-1);
+    height:100%; width:auto; min-width:100%;
+    object-fit:cover;
+  }
+  #overlay{ pointer-events:none; }
 
-    /* HUD Header */
-    .hud-header {
-      width: 100%;
-      height: 85px;
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(226, 232, 240, 0.8);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0 28px;
-      z-index: 10;
-      color: #0f172a;
-    }
+  #centerMsg{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    background:rgba(10,10,12,0.72); padding:16px 28px; border-radius:10px;
+    font-size:20px; font-weight:700; letter-spacing:1px; text-align:center;
+    z-index:6; backdrop-filter:blur(4px);
+  }
+  #centerMsg.hidden{ display:none; }
+  #centerMsg .sub{ display:block; font-size:13px; font-weight:400; color:var(--dim); margin-top:6px;}
 
-    .logo-container { display: flex; flex-direction: column; }
-    .logo-title { font-size: 28px; font-weight: 900; color: #0f172a; line-height: 1; letter-spacing: -1px; }
-    .logo-sub { font-size: 11px; font-weight: 800; color: #0284c7; letter-spacing: 1.5px; margin-top: 4px; }
+  #flash{
+    position:absolute; inset:0; background:var(--accent); opacity:0;
+    pointer-events:none; z-index:4;
+  }
+  #flash.hit{ animation:flashPop .18s ease-out; }
+  @keyframes flashPop{ from{opacity:.35;} to{opacity:0;} }
 
-    .score-container { display: flex; gap: 36px; align-items: center; }
-    .score-box { text-align: center; }
-    .score-value { font-size: 38px; font-weight: 900; color: #0f172a; line-height: 1; font-family: monospace; }
-    .max-score-value { font-size: 38px; font-weight: 900; color: #0284c7; line-height: 1; font-family: monospace; }
-    .score-label { font-size: 10px; font-weight: 700; color: #64748b; letter-spacing: 1px; }
+  #bottombar{
+    background:var(--bar); padding:10px 28px; text-align:center;
+    font-size:12.5px; color:var(--dim); letter-spacing:.5px;
+    border-top:1px solid #21252b; z-index:5;
+  }
+  #bottombar b{ color:var(--white); }
 
-    /* Main Split-Screen */
-    #main-container {
-      display: flex;
-      width: 100vw;
-      height: calc(100vh - 125px);
-      position: relative;
-    }
+  #results{
+    position:absolute; inset:0; background:rgba(6,7,9,0.92);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    z-index:10; gap:6px; text-align:center;
+  }
+  #results.hidden{ display:none; }
+  #results h1{ font-size:14px; letter-spacing:3px; color:var(--dim); text-transform:uppercase; margin:0 0 4px;}
+  #results .big{ font-size:min(22vw,140px); font-weight:900; color:var(--accent); line-height:1; }
+  #results .sub{ color:var(--dim); font-size:14px; margin-top:10px;}
+  #results button{
+    margin-top:22px; background:var(--accent); border:none; color:#1a1300;
+    font-weight:800; padding:12px 30px; border-radius:8px; font-size:15px;
+    letter-spacing:1px; cursor:pointer;
+  }
 
-    /* Left: Live Body Vision Camera */
-    .cam-panel {
-      flex: 1;
-      position: relative;
-      background: #000;
-      border-right: 4px solid #334155;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      overflow: hidden;
-    }
-    .cam-panel video { display: none; }
-    .cam-panel canvas { width: 100%; height: 100%; object-fit: cover; }
-
-    .cam-label {
-      position: absolute;
-      top: 16px;
-      left: 16px;
-      background: rgba(2, 132, 199, 0.9);
-      color: white;
-      padding: 6px 14px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 800;
-      letter-spacing: 1px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    }
-
-    /* Right: 2D Arcade Game Track */
-    .game-panel {
-      flex: 1.3;
-      position: relative;
-      background: #0284c7;
-    }
-    .game-panel canvas { width: 100%; height: 100%; object-fit: cover; }
-
-    /* Popups */
-    #meme-popup {
-      position: absolute;
-      top: 30%;
-      left: 50%;
-      transform: translate(-50%, -50%) scale(0.5);
-      font-size: 42px;
-      font-weight: 900;
-      color: #38bdf8;
-      text-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 20px #ffffff;
-      pointer-events: none;
-      opacity: 0;
-      transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      z-index: 15;
-      white-space: nowrap;
-    }
-    #meme-popup.active {
-      opacity: 1;
-      transform: translate(-50%, -50%) scale(1.1) rotate(-3deg);
-    }
-
-    /* Bottom Control Bar */
-    .bottom-bar {
-      width: 100%;
-      height: 40px;
-      background: rgba(255, 255, 255, 0.95);
-      border-top: 1px solid #e2e8f0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 10;
-    }
-    .controls-text { font-size: 13px; font-weight: 700; color: #0f172a; letter-spacing: 0.5px; }
-
-    /* Overlay */
-    .overlay {
-      position: absolute;
-      inset: 0;
-      background: rgba(255, 255, 255, 0.96);
-      backdrop-filter: blur(10px);
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      z-index: 20;
-      color: #0f172a;
-    }
-
-    .start-btn {
-      background: #0f172a;
-      color: #ffffff;
-      border: none;
-      padding: 16px 40px;
-      font-size: 18px;
-      font-weight: 800;
-      border-radius: 12px;
-      cursor: pointer;
-      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.2);
-    }
-    .start-btn:hover { background: #1e293b; }
-  </style>
+  #permission{
+    position:absolute; inset:0; background:var(--bg); display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:16px; z-index:20; padding:24px; text-align:center;
+  }
+  #permission.hidden{ display:none; }
+  #permission button{
+    background:var(--accent); border:none; color:#1a1300; font-weight:800;
+    padding:14px 32px; border-radius:8px; font-size:16px; cursor:pointer;
+  }
+  #permission p{ color:var(--dim); max-width:420px; font-size:14px; line-height:1.5;}
+</style>
 </head>
 <body>
+<div id="app">
 
-  <!-- Top HUD -->
-  <div class="hud-header">
-    <div class="logo-container">
-      <span class="logo-title">WING FLAPPER 🪽</span>
-      <span class="logo-sub">2D BODY VISION ARCADE</span>
+  <div id="topbar">
+    <div class="stat" id="title-stat">
+      <div class="value">PUNCH</div>
+      <div class="label">45s Challenge</div>
     </div>
-    <div class="score-container">
-      <div class="score-box">
-        <div id="score" class="score-value">0</div>
-        <div class="score-label">PIPES PASSED</div>
+    <div class="stat" id="reps-stat">
+      <div class="value" id="repsVal">0</div>
+      <div class="label">Punches</div>
+    </div>
+    <div class="stat" id="best-stat">
+      <div class="value" id="bestVal">0</div>
+      <div class="label">Best</div>
+    </div>
+    <div class="stat" id="timer-stat">
+      <div class="value" id="timerVal">45.0</div>
+      <div class="label">Seconds</div>
+    </div>
+  </div>
+
+  <div id="stage">
+    <video id="webcam" autoplay playsinline muted></video>
+    <canvas id="overlay"></canvas>
+    <div id="flash"></div>
+    <div id="centerMsg">
+      PAUSED
+      <span class="sub">SPACE / TAP to start</span>
+    </div>
+
+    <div id="results" class="hidden">
+      <h1>Time's Up</h1>
+      <div class="big" id="finalReps">0</div>
+      <div class="sub" id="finalSub">punches in 45 seconds</div>
+      <button id="restartBtn">Try Again</button>
+    </div>
+
+    <div id="permission">
+      <div style="font-size:40px;">🥊</div>
+      <div style="font-weight:800; font-size:20px;">Punch Counter</div>
+      <p>Allow camera access, stand back so your shoulders and arms are visible, then start the 45 second timer and throw as many punches as you can.</p>
+      <button id="enableCam">Enable Camera</button>
+      <div id="camPickerWrap" style="display:none; margin-top:10px; width:100%; max-width:360px;">
+        <label for="camSelect" style="display:block; font-size:12px; color:var(--dim); margin-bottom:6px;">Wrong camera showing up? Pick the right one:</label>
+        <select id="camSelect" style="width:100%; padding:10px; border-radius:8px; background:#1c2026; color:var(--white); border:1px solid #333; font-size:14px;"></select>
       </div>
-      <div class="score-box">
-        <div id="max_score" class="max-score-value">0</div>
-        <div class="score-label">HIGH SCORE</div>
-      </div>
+      <p id="permError" style="color:#ff6b6b;"></p>
     </div>
   </div>
 
-  <!-- Main Container -->
-  <div id="main-container">
-    <div id="meme-popup">NICE FLAP! 🪽</div>
-
-    <!-- Left Camera Panel -->
-    <div class="cam-panel">
-      <div class="cam-label">🔴 POSE VISION TRACKING</div>
-      <video id="webcam" playsinline></video>
-      <canvas id="cam_canvas"></canvas>
-    </div>
-
-    <!-- Right Game Panel -->
-    <div class="game-panel">
-      <canvas id="game_canvas"></canvas>
-    </div>
-
-    <!-- Start Overlay -->
-    <div id="start_overlay" class="overlay">
-      <h1 style="font-size: 40px; font-weight: 900; margin-bottom: 12px;">WING FLAPPER 🪽</h1>
-      <p style="font-size: 16px; color: #64748b; margin-bottom: 28px; text-align: center; max-width: 480px;">
-        Stand back so your camera sees your upper body. <strong>Flap your arms up and down</strong> like wings to fly and bypass obstacles!
-      </p>
-      <button class="start-btn" onclick="initAndStart()">ALLOW CAMERA & START</button>
-    </div>
+  <div id="bottombar">
+    <b>SPACE / TAP</b>: Start · Pause &nbsp;&nbsp;|&nbsp;&nbsp; <b>R</b>: Reset
   </div>
 
-  <!-- Bottom Bar -->
-  <div class="bottom-bar">
-    <div id="status_text" class="controls-text">FLAP YOUR ARMS UP & DOWN TO FLY HIGHER &nbsp;&bull;&nbsp; PRESS SPACE TO RESTART</div>
-  </div>
+</div>
 
-  <script>
-    let videoElement = document.getElementById('webcam');
-    let camCanvas = document.getElementById('cam_canvas');
-    let camCtx = camCanvas.getContext('2d');
+<script type="module">
+import {
+  PoseLandmarker,
+  FilesetResolver,
+  DrawingUtils
+} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
 
-    let gameCanvas = document.getElementById('game_canvas');
-    let gameCtx = gameCanvas.getContext('2d');
+const video = document.getElementById('webcam');
+const overlay = document.getElementById('overlay');
+const ctx = overlay.getContext('2d');
+const repsVal = document.getElementById('repsVal');
+const bestVal = document.getElementById('bestVal');
+const timerVal = document.getElementById('timerVal');
+const timerStat = document.getElementById('timer-stat');
+const centerMsg = document.getElementById('centerMsg');
+const flashEl = document.getElementById('flash');
+const resultsEl = document.getElementById('results');
+const finalReps = document.getElementById('finalReps');
+const restartBtn = document.getElementById('restartBtn');
+const permissionEl = document.getElementById('permission');
+const enableCamBtn = document.getElementById('enableCam');
+const permError = document.getElementById('permError');
+const camPickerWrap = document.getElementById('camPickerWrap');
+const camSelect = document.getElementById('camSelect');
 
-    let isGameRunning = false;
-    let cameraStarted = false;
-    let score = 0;
-    let maxScore = parseInt(localStorage.getItem('wingflapper_max_score') || '0');
-    let lastTime = 0;
+const DURATION = 45;
+const BEST_KEY = 'punchcounter_best';
 
-    // Body Tracking Variables
-    let leftWristY = 0.5, rightWristY = 0.5;
-    let leftShoulderY = 0.5, rightShoulderY = 0.5;
-    let prevAvgWristY = 0.5;
-    let flapVelocity = 0;
+let poseLandmarker = null;
+let running = false;
+let camReady = false;
+let reps = 0;
+let best = Number(localStorage.getItem(BEST_KEY) || 0);
+let timeLeft = DURATION;
+let lastTs = performance.now();
+let rafId = null;
 
-    // Game Physics
-    let birdY = 200;
-    let birdVy = 0;
-    const gravity = 800; // px / sec^2
-    const flapImpulse = -320;
+bestVal.textContent = best;
 
-    let pipes = [];
-    let pipeSpawnTimer = 0;
+const arms = {
+  left:  { state: 'retracted', cooldownUntil: 0 },
+  right: { state: 'retracted', cooldownUntil: 0 }
+};
+const EXTEND_THRESH = 1.35;
+const RETRACT_THRESH = 0.95;
+const COOLDOWN_MS = 220;
 
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function torsoLength(lm){
+  const ls = lm[11], rs = lm[12], lh = lm[23], rh = lm[24];
+  const d1 = dist(ls, lh);
+  const d2 = dist(rs, rh);
+  return ((d1 + d2) / 2) || 0.2;
+}
+function dist(a, b){
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
 
-    function playBeep(freq, type, duration) {
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = type || 'sine';
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start();
-      osc.stop(audioCtx.currentTime + duration);
+function processPunches(lm, now){
+  const scale = torsoLength(lm);
+  const pairs = {
+    left:  { shoulder: lm[11], wrist: lm[15] },
+    right: { shoulder: lm[12], wrist: lm[16] }
+  };
+  for (const side of ['left','right']){
+    const { shoulder, wrist } = pairs[side];
+    if (!shoulder || !wrist) continue;
+    const d = dist(shoulder, wrist) / scale;
+    const arm = arms[side];
+
+    if (arm.state === 'retracted' && d > EXTEND_THRESH && now > arm.cooldownUntil){
+      arm.state = 'extended';
+      arm.cooldownUntil = now + COOLDOWN_MS;
+      countPunch();
+    } else if (arm.state === 'extended' && d < RETRACT_THRESH){
+      arm.state = 'retracted';
     }
+  }
+}
 
-    document.getElementById('max_score').innerText = maxScore;
+function countPunch(){
+  reps += 1;
+  repsVal.textContent = reps;
+  flashEl.classList.remove('hit');
+  void flashEl.offsetWidth;
+  flashEl.classList.add('hit');
+  if (navigator.vibrate) navigator.vibrate(30);
+}
 
-    function showMemePopup(text) {
-      const popup = document.getElementById('meme-popup');
-      popup.innerText = text;
-      popup.classList.add('active');
-      playBeep(580, 'triangle', 0.15);
-      setTimeout(() => popup.classList.remove('active'), 1000);
-    }
+let currentStream = null;
+let modelLoaded = false;
 
-    async function initAndStart() {
-      document.getElementById('start_overlay').style.display = 'none';
+async function startStream(deviceId){
+  if (currentStream){
+    currentStream.getTracks().forEach(t => t.stop());
+  }
+  const constraints = {
+    video: deviceId
+      ? { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
+      : { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+    audio: false
+  };
+  const stream = await navigator.mediaDevices.getUserMedia(constraints);
+  currentStream = stream;
+  video.srcObject = stream;
+  await new Promise(res => { video.onloadedmetadata = res; });
+  await video.play();
+  resizeCanvas();
+}
 
-      const pose = new Pose({
-        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
-      });
+async function populateCameraList(){
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  const cams = devices.filter(d => d.kind === 'videoinput');
+  camSelect.innerHTML = '';
+  cams.forEach(cam => {
+    const opt = document.createElement('option');
+    opt.value = cam.deviceId;
+    opt.textContent = cam.label || 'Camera';
+    camSelect.appendChild(opt);
+  });
+  if (cams.length > 1){
+    camPickerWrap.style.display = 'block';
+  }
+  return cams;
+}
 
-      pose.setOptions({
-        modelComplexity: 1,
-        smoothLandmarks: true,
-        minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5
-      });
+async function setup(){
+  try{
+    await startStream(null);
 
-      pose.onResults(onPoseResults);
+    const cams = await populateCameraList();
+    const currentTrack = currentStream.getVideoTracks()[0];
+    const currentLabel = (currentTrack.label || '').toLowerCase();
+    const isLikelyVirtual = /iriun|obs|droidcam|virtual|snap camera/.test(currentLabel);
 
-      const camera = new Camera(videoElement, {
-        onFrame: async () => {
-          await pose.send({ image: videoElement });
-        },
-        width: 1280,
-        height: 720
-      });
-
-      try {
-        await camera.start();
-        cameraStarted = true;
-        resetGame();
-      } catch (e) {
-        alert("Camera permission required!");
-      }
-    }
-
-    function onPoseResults(results) {
-      if (!results.poseLandmarks) return;
-      const lm = results.poseLandmarks;
-
-      // Wrists: 15 (left wrist), 16 (right wrist)
-      // Shoulders: 11 (left shoulder), 12 (right shoulder)
-      leftWristY = lm[15].y;
-      rightWristY = lm[16].y;
-      leftShoulderY = lm[11].y;
-      rightShoulderY = lm[12].y;
-
-      // Draw pose lines on camera view
-      camCtx.save();
-      camCtx.translate(camCanvas.width, 0);
-      camCtx.scale(-1, 1);
-      camCtx.drawImage(videoElement, 0, 0, camCanvas.width, camCanvas.height);
-
-      // Draw Wing Lines
-      const w = camCanvas.width, h = camCanvas.height;
-      camCtx.strokeStyle = '#38bdf8';
-      camCtx.lineWidth = 6;
-
-      camCtx.beginPath();
-      // Left arm wing
-      camCtx.moveTo((1 - lm[11].x) * w, lm[11].y * h);
-      camCtx.lineTo((1 - lm[15].x) * w, lm[15].y * h);
-      // Right arm wing
-      camCtx.moveTo((1 - lm[12].x) * w, lm[12].y * h);
-      camCtx.lineTo((1 - lm[16].x) * w, lm[16].y * h);
-      camCtx.stroke();
-
-      camCtx.restore();
-    }
-
-    function resetGame() {
-      score = 0;
-      birdY = gameCanvas.height / 2 || 250;
-      birdVy = 0;
-      pipes = [];
-      pipeSpawnTimer = 0;
-      isGameRunning = true;
-      lastTime = performance.now();
-
-      document.getElementById('score').innerText = '0';
-      document.getElementById('status_text').innerText = "FLAP YOUR ARMS TO KEEP FLYING!";
-
-      playBeep(440, 'sine', 0.15);
-      requestAnimationFrame(gameLoop);
-    }
-
-    function gameOver(reason) {
-      isGameRunning = false;
-      playBeep(150, 'sawtooth', 0.4);
-
-      if (score > maxScore) {
-        maxScore = score;
-        localStorage.setItem('wingflapper_max_score', maxScore);
-        document.getElementById('max_score').innerText = maxScore;
-        showMemePopup("NEW HIGH SCORE! 🏆");
-      }
-
-      document.getElementById('status_text').innerText = reason || "CRASHED! PRESS SPACE TO RESTART";
-    }
-
-    function spawnPipe() {
-      const gapHeight = 170;
-      const minPipeH = 60;
-      const maxPipeH = gameCanvas.height - gapHeight - minPipeH;
-      const topHeight = minPipeH + Math.random() * (maxPipeH - minPipeH);
-
-      pipes.push({
-        x: gameCanvas.width + 60,
-        top: topHeight,
-        bottom: gameCanvas.height - topHeight - gapHeight,
-        passed: false
-      });
-    }
-
-    function gameLoop(now) {
-      if (camCanvas.width !== camCanvas.parentElement.clientWidth || camCanvas.height !== camCanvas.parentElement.clientHeight) {
-        camCanvas.width = camCanvas.parentElement.clientWidth;
-        camCanvas.height = camCanvas.parentElement.clientHeight;
-      }
-      if (gameCanvas.width !== gameCanvas.parentElement.clientWidth || gameCanvas.height !== gameCanvas.parentElement.clientHeight) {
-        gameCanvas.width = gameCanvas.parentElement.clientWidth;
-        gameCanvas.height = gameCanvas.parentElement.clientHeight;
-      }
-
-      const delta = (now - lastTime) / 1000;
-      lastTime = now;
-
-      // Calculate Flap Motion
-      const currentAvgWristY = (leftWristY + rightWristY) / 2;
-      const wristSpeed = (currentAvgWristY - prevAvgWristY) / delta; 
-      prevAvgWristY = currentAvgWristY;
-
-      // Trigger flap when moving arms downwards fast
-      if (wristSpeed > 1.2 && isGameRunning) {
-        birdVy = flapImpulse;
-        playBeep(600, 'sine', 0.1);
-      }
-
-      if (isGameRunning) {
-        // Physics update
-        birdVy += gravity * delta;
-        birdY += birdVy * delta;
-
-        // Ground / Ceiling Collisions
-        if (birdY > gameCanvas.height - 25) {
-          birdY = gameCanvas.height - 25;
-          gameOver("CRASHED INTO GROUND! 💥");
-        }
-        if (birdY < 25) {
-          birdY = 25;
-          birdVy = 0;
-        }
-
-        // Pipe Spawning & Updating
-        pipeSpawnTimer += delta;
-        if (pipeSpawnTimer > 2.2) {
-          spawnPipe();
-          pipeSpawnTimer = 0;
-        }
-
-        const birdX = 100;
-        const birdRadius = 22;
-
-        for (let i = pipes.length - 1; i >= 0; i--) {
-          let p = pipes[i];
-          p.x -= 160 * delta; // pipe speed
-
-          // Check passing score
-          if (!p.passed && p.x < birdX) {
-            p.passed = true;
-            score++;
-            document.getElementById('score').innerText = score;
-            showMemePopup("+1 POINT! 🪽");
-          }
-
-          // AABB Collision check
-          const pipeWidth = 60;
-          if (
-            birdX + birdRadius > p.x &&
-            birdX - birdRadius < p.x + pipeWidth
-          ) {
-            if (birdY - birdRadius < p.top || birdY + birdRadius > gameCanvas.height - p.bottom) {
-              gameOver("CRASHED INTO OBSTACLE! 💥");
-            }
-          }
-
-          if (p.x < -80) {
-            pipes.splice(i, 1);
-          }
-        }
-      }
-
-      // --- RENDER 2D ARCADE WORLD ---
-      // Sky Background
-      gameCtx.fillStyle = '#38bdf8';
-      gameCtx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
-
-      // Clouds
-      gameCtx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-      gameCtx.beginPath();
-      gameCtx.arc(120, 100, 40, 0, Math.PI * 2);
-      gameCtx.arc(160, 90, 50, 0, Math.PI * 2);
-      gameCtx.arc(320, 150, 45, 0, Math.PI * 2);
-      gameCtx.fill();
-
-      // Pipes
-      gameCtx.fillStyle = '#22c55e';
-      gameCtx.strokeStyle = '#15803d';
-      gameCtx.lineWidth = 4;
-
-      pipes.forEach(p => {
-        // Top Pipe
-        gameCtx.fillRect(p.x, 0, 60, p.top);
-        gameCtx.strokeRect(p.x, 0, 60, p.top);
-
-        // Bottom Pipe
-        gameCtx.fillRect(p.x, gameCanvas.height - p.bottom, 60, p.bottom);
-        gameCtx.strokeRect(p.x, gameCanvas.height - p.bottom, 60, p.bottom);
-      });
-
-      // Player Bird
-      const birdX = 100;
-      gameCtx.fillStyle = '#facc15'; // Yellow Flapper Body
-      gameCtx.beginPath();
-      gameCtx.arc(birdX, birdY, 22, 0, Math.PI * 2);
-      gameCtx.fill();
-
-      // Eye & Beak
-      gameCtx.fillStyle = '#0f172a';
-      gameCtx.beginPath();
-      gameCtx.arc(birdX + 10, birdY - 6, 4, 0, Math.PI * 2);
-      gameCtx.fill();
-
-      gameCtx.fillStyle = '#f97316';
-      gameCtx.beginPath();
-      gameCtx.moveTo(birdX + 16, birdY);
-      gameCtx.lineTo(birdX + 30, birdY + 5);
-      gameCtx.lineTo(birdX + 16, birdY + 10);
-      gameCtx.closePath();
-      gameCtx.fill();
-
-      // Wing (animates up/down based on velocity)
-      gameCtx.fillStyle = '#eab308';
-      gameCtx.beginPath();
-      const wingYOffset = birdVy < 0 ? -12 : 8;
-      gameCtx.ellipse(birdX - 6, birdY + wingYOffset, 12, 6, Math.PI / 4, 0, Math.PI * 2);
-      gameCtx.fill();
-
-      if (isGameRunning) {
-        requestAnimationFrame(gameLoop);
+    if (isLikelyVirtual && cams.length > 1){
+      const real = cams.find(c => !/iriun|obs|droidcam|virtual|snap camera/i.test(c.label));
+      if (real){
+        await startStream(real.deviceId);
       }
     }
+    const activeId = currentStream.getVideoTracks()[0].getSettings().deviceId;
+    if (activeId) camSelect.value = activeId;
 
-    window.addEventListener('keydown', (e) => {
-      if (e.code === 'Space' || e.code === 'KeyR') {
-        if (cameraStarted) resetGame();
-      }
-    });
+    camReady = true;
+    permissionEl.classList.add('hidden');
+  }catch(err){
+    permError.textContent = 'Camera access failed: ' + err.message;
+    return;
+  }
 
-    window.addEventListener('click', (e) => {
-      if (cameraStarted && !isGameRunning && e.target.tagName !== 'BUTTON') {
-        resetGame();
-      }
-    });
-  </script>
+  if (modelLoaded) return;
+  const filesetResolver = await FilesetResolver.forVisionTasks(
+    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+  );
+  poseLandmarker = await PoseLandmarker.createFromOptions(filesetResolver, {
+    baseOptions: {
+      modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+      delegate: "GPU"
+    },
+    runningMode: "VIDEO",
+    numPoses: 1
+  });
+  modelLoaded = true;
+
+  requestAnimationFrame(loop);
+}
+
+function resizeCanvas(){
+  overlay.width = video.videoWidth || video.clientWidth;
+  overlay.height = video.videoHeight || video.clientHeight;
+}
+
+const drawingUtils = () => new DrawingUtils(ctx);
+
+function loop(ts){
+  rafId = requestAnimationFrame(loop);
+  if (!poseLandmarker || video.readyState < 2) return;
+  if (overlay.width !== video.videoWidth) resizeCanvas();
+
+  const result = poseLandmarker.detectForVideo(video, ts);
+  ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+  if (result.landmarks && result.landmarks.length > 0){
+    const lm = result.landmarks[0];
+    const du = drawingUtils();
+    ctx.save();
+    ctx.strokeStyle = '#3ea6ff';
+    ctx.lineWidth = 3;
+    du.drawConnectors(lm, PoseLandmarker.POSE_CONNECTIONS, { color: '#3ea6ff', lineWidth: 3 });
+    ctx.restore();
+
+    if (running){
+      processPunches(lm, ts);
+    }
+  }
+
+  if (running){
+    const dt = (ts - lastTs) / 1000;
+    lastTs = ts;
+    timeLeft = Math.max(0, timeLeft - dt);
+    timerVal.textContent = timeLeft.toFixed(1);
+    timerStat.classList.toggle('low', timeLeft <= 10);
+    if (timeLeft <= 0){
+      endRound();
+    }
+  } else {
+    lastTs = ts;
+  }
+}
+
+function startRound(){
+  if (!camReady) return;
+  if (timeLeft <= 0) resetRound(false);
+  running = true;
+  lastTs = performance.now();
+  centerMsg.classList.add('hidden');
+  resultsEl.classList.add('hidden');
+}
+
+function pauseRound(){
+  running = false;
+  centerMsg.querySelector('.sub').textContent = 'SPACE / TAP to resume';
+  centerMsg.classList.remove('hidden');
+}
+
+function endRound(){
+  running = false;
+  timeLeft = 0;
+  timerVal.textContent = '0.0';
+  if (reps > best){
+    best = reps;
+    bestVal.textContent = best;
+    localStorage.setItem(BEST_KEY, String(best));
+  }
+  finalReps.textContent = reps;
+  resultsEl.classList.remove('hidden');
+}
+
+function resetRound(hideResults = true){
+  reps = 0;
+  timeLeft = DURATION;
+  repsVal.textContent = '0';
+  timerVal.textContent = DURATION.toFixed(1);
+  timerStat.classList.remove('low');
+  arms.left.state = 'retracted';
+  arms.right.state = 'retracted';
+  running = false;
+  centerMsg.querySelector('.sub').textContent = 'SPACE / TAP to start';
+  centerMsg.classList.remove('hidden');
+  if (hideResults) resultsEl.classList.add('hidden');
+}
+
+function toggleRound(){
+  if (resultsEl && !resultsEl.classList.contains('hidden')) return;
+  if (running) pauseRound(); else startRound();
+}
+
+enableCamBtn.addEventListener('click', setup);
+
+camSelect.addEventListener('change', async () => {
+  try{
+    await startStream(camSelect.value);
+  }catch(err){
+    permError.textContent = 'Could not switch camera: ' + err.message;
+  }
+});
+restartBtn.addEventListener('click', () => { resetRound(true); startRound(); });
+
+document.getElementById('stage').addEventListener('click', (e) => {
+  if (!camReady) return;
+  if (!resultsEl.classList.contains('hidden')) return;
+  toggleRound();
+});
+
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Space'){
+    e.preventDefault();
+    if (!camReady) return;
+    if (!resultsEl.classList.contains('hidden')) return;
+    toggleRound();
+  } else if (e.key === 'r' || e.key === 'R'){
+    resetRound(true);
+  }
+});
+
+window.addEventListener('resize', resizeCanvas);
+</script>
 </body>
 </html>
