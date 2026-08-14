@@ -6,105 +6,75 @@
 <title>Punch Counter — 45s Challenge</title>
 <style>
   :root{
-    --bg:#0b0d10;
-    --bar:#15181c;
-    --accent:#ff8a1e;
-    --white:#f4f5f6;
-    --dim:#9aa0a6;
-    --line:#3ea6ff;
+    --bg:#0b0d10; --bar:#15181c; --accent:#ff8a1e;
+    --white:#f4f5f6; --dim:#9aa0a6; --zoneL:#3ea6ff; --zoneR:#ff4d8d;
   }
   *{box-sizing:border-box;}
-  html,body{
-    margin:0; padding:0; height:100%; background:var(--bg);
+  html,body{ margin:0; padding:0; height:100%; background:var(--bg);
     font-family:'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif;
-    color:var(--white); overflow:hidden;
-  }
+    color:var(--white); overflow:hidden; }
   #app{ position:relative; width:100vw; height:100vh; display:flex; flex-direction:column; }
 
-  #topbar{
-    display:flex; align-items:center; justify-content:space-between;
-    background:var(--bar); padding:14px 28px; z-index:5;
-    border-bottom:1px solid #21252b;
-  }
+  #topbar{ display:flex; align-items:center; justify-content:space-between;
+    background:var(--bar); padding:14px 28px; z-index:5; border-bottom:1px solid #21252b; }
   .stat{ text-align:center; }
   .stat .label{ font-size:11px; letter-spacing:1.5px; color:var(--dim); text-transform:uppercase; margin-top:2px;}
   .stat .value{ font-size:clamp(28px,5vw,44px); font-weight:800; line-height:1; }
   #title-stat .value{ color:var(--accent); font-size:clamp(22px,4vw,34px); }
-  #reps-stat .value{ color:var(--white); }
   #best-stat .value{ color:var(--accent); font-size:clamp(22px,4vw,34px); }
-  #timer-stat .value{ color:var(--white); font-variant-numeric:tabular-nums; }
+  #timer-stat .value{ font-variant-numeric:tabular-nums; }
   #timer-stat.low .value{ color:#ff4d4d; }
 
   #stage{ position:relative; flex:1; overflow:hidden; background:#000; }
-  #webcam, #overlay{
-    position:absolute; top:50%; left:50%;
-    transform:translate(-50%,-50%) scaleX(-1);
-    height:100%; width:auto; min-width:100%;
-    object-fit:cover;
-  }
+  #webcam, #overlay{ position:absolute; top:50%; left:50%;
+    transform:translate(-50%,-50%) scaleX(-1); height:100%; width:auto; min-width:100%; object-fit:cover; }
   #overlay{ pointer-events:none; }
 
-  #centerMsg{
-    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  /* Punch zones — fixed, NOT mirrored, so labels read correctly */
+  #zones{ position:absolute; top:0; left:0; right:0; height:34%; z-index:6; display:flex; pointer-events:none; }
+  .zone{ flex:1; display:flex; align-items:center; justify-content:center;
+    border-bottom:3px solid; font-weight:900; font-size:clamp(16px,3vw,26px);
+    letter-spacing:2px; text-shadow:0 2px 8px rgba(0,0,0,.8); transition:background .08s, opacity .08s; }
+  #zoneLeft{ background:rgba(62,166,255,0.14); border-color:var(--zoneL); color:var(--zoneL); }
+  #zoneRight{ background:rgba(255,77,141,0.14); border-color:var(--zoneR); color:var(--zoneR); }
+  .zone.hit{ background-color:currentColor; color:#000 !important; opacity:.9; }
+
+  #centerMsg{ position:absolute; top:58%; left:50%; transform:translate(-50%,-50%);
     background:rgba(10,10,12,0.72); padding:16px 28px; border-radius:10px;
-    font-size:20px; font-weight:700; letter-spacing:1px; text-align:center;
-    z-index:6; backdrop-filter:blur(4px);
-  }
+    font-size:20px; font-weight:700; letter-spacing:1px; text-align:center; z-index:7; backdrop-filter:blur(4px); }
   #centerMsg.hidden{ display:none; }
   #centerMsg .sub{ display:block; font-size:13px; font-weight:400; color:var(--dim); margin-top:6px;}
 
-  #flash{
-    position:absolute; inset:0; background:var(--accent); opacity:0;
-    pointer-events:none; z-index:4;
-  }
-  #flash.hit{ animation:flashPop .18s ease-out; }
-  @keyframes flashPop{ from{opacity:.35;} to{opacity:0;} }
+  #flash{ position:absolute; inset:0; background:var(--accent); opacity:0; pointer-events:none; z-index:4; }
+  #flash.hit{ animation:flashPop .15s ease-out; }
+  @keyframes flashPop{ from{opacity:.3;} to{opacity:0;} }
 
-  #bottombar{
-    background:var(--bar); padding:10px 28px; text-align:center;
-    font-size:12.5px; color:var(--dim); letter-spacing:.5px;
-    border-top:1px solid #21252b; z-index:5;
-  }
+  #bottombar{ background:var(--bar); padding:10px 28px; text-align:center;
+    font-size:12.5px; color:var(--dim); letter-spacing:.5px; border-top:1px solid #21252b; z-index:5; }
   #bottombar b{ color:var(--white); }
 
-  #results{
-    position:absolute; inset:0; background:rgba(6,7,9,0.92);
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    z-index:10; gap:6px; text-align:center;
-  }
+  #results{ position:absolute; inset:0; background:rgba(6,7,9,0.92);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:10; gap:6px; text-align:center; }
   #results.hidden{ display:none; }
   #results h1{ font-size:14px; letter-spacing:3px; color:var(--dim); text-transform:uppercase; margin:0 0 4px;}
   #results .big{ font-size:min(22vw,140px); font-weight:900; color:var(--accent); line-height:1; }
   #results .sub{ color:var(--dim); font-size:14px; margin-top:10px;}
-  #results button{
-    margin-top:22px; background:var(--accent); border:none; color:#1a1300;
-    font-weight:800; padding:12px 30px; border-radius:8px; font-size:15px;
-    letter-spacing:1px; cursor:pointer;
-  }
+  #results button{ margin-top:22px; background:var(--accent); border:none; color:#1a1300;
+    font-weight:800; padding:12px 30px; border-radius:8px; font-size:15px; letter-spacing:1px; cursor:pointer; }
 
-  /* Debug readout — a plain (non-mirrored) HTML overlay so the numbers
-     read correctly. Watch this while you punch to see why a rep does
-     or doesn't count, and tune the thresholds below to match. */
-  #debugPanel{
-    position:absolute; left:14px; bottom:14px; z-index:7;
+  #debugPanel{ position:absolute; left:14px; bottom:14px; z-index:7;
     background:rgba(10,10,12,0.78); padding:10px 14px; border-radius:8px;
-    font-size:13px; font-family:'Consolas', monospace; line-height:1.7;
-    backdrop-filter:blur(4px); pointer-events:none; min-width:170px;
-  }
+    font-size:13px; font-family:'Consolas', monospace; line-height:1.7; backdrop-filter:blur(4px); pointer-events:none; min-width:170px; }
   #debugPanel .row{ display:flex; justify-content:space-between; gap:14px; }
   #debugPanel .extended{ color:#4dff88; font-weight:700; }
   #debugPanel .retracted{ color:var(--dim); }
   #debugPanel .lost{ color:#ff6b6b; }
 
-  #permission{
-    position:absolute; inset:0; background:var(--bg); display:flex; flex-direction:column;
-    align-items:center; justify-content:center; gap:16px; z-index:20; padding:24px; text-align:center;
-  }
+  #permission{ position:absolute; inset:0; background:var(--bg); display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:16px; z-index:20; padding:24px; text-align:center; }
   #permission.hidden{ display:none; }
-  #permission button{
-    background:var(--accent); border:none; color:#1a1300; font-weight:800;
-    padding:14px 32px; border-radius:8px; font-size:16px; cursor:pointer;
-  }
+  #permission button{ background:var(--accent); border:none; color:#1a1300; font-weight:800;
+    padding:14px 32px; border-radius:8px; font-size:16px; cursor:pointer; }
   #permission p{ color:var(--dim); max-width:420px; font-size:14px; line-height:1.5;}
 </style>
 </head>
@@ -112,36 +82,25 @@
 <div id="app">
 
   <div id="topbar">
-    <div class="stat" id="title-stat">
-      <div class="value">PUNCH</div>
-      <div class="label">45s Challenge</div>
-    </div>
-    <div class="stat" id="reps-stat">
-      <div class="value" id="repsVal">0</div>
-      <div class="label">Punches</div>
-    </div>
-    <div class="stat" id="best-stat">
-      <div class="value" id="bestVal">0</div>
-      <div class="label">Best</div>
-    </div>
-    <div class="stat" id="timer-stat">
-      <div class="value" id="timerVal">45.0</div>
-      <div class="label">Seconds</div>
-    </div>
+    <div class="stat" id="title-stat"><div class="value">PUNCH</div><div class="label">45s Challenge</div></div>
+    <div class="stat" id="reps-stat"><div class="value" id="repsVal">0</div><div class="label">Punches</div></div>
+    <div class="stat" id="best-stat"><div class="value" id="bestVal">0</div><div class="label">Best</div></div>
+    <div class="stat" id="timer-stat"><div class="value" id="timerVal">45.0</div><div class="label">Seconds</div></div>
   </div>
 
   <div id="stage">
     <video id="webcam" autoplay playsinline muted></video>
     <canvas id="overlay"></canvas>
+    <div id="zones">
+      <div class="zone" id="zoneLeft">PUNCH ME</div>
+      <div class="zone" id="zoneRight">PUNCH ME</div>
+    </div>
     <div id="flash"></div>
     <div id="debugPanel">
       <div class="row"><span>Left arm</span><span id="dbgLeft">—</span></div>
       <div class="row"><span>Right arm</span><span id="dbgRight">—</span></div>
     </div>
-    <div id="centerMsg">
-      PAUSED
-      <span class="sub">SPACE / TAP to start</span>
-    </div>
+    <div id="centerMsg">PAUSED<span class="sub">SPACE / TAP to start</span></div>
 
     <div id="results" class="hidden">
       <h1>Time's Up</h1>
@@ -153,7 +112,7 @@
     <div id="permission">
       <div style="font-size:40px;">🥊</div>
       <div style="font-weight:800; font-size:20px;">Punch Counter</div>
-      <p>Allow camera access, stand back so your shoulders and arms are visible, then start the 45 second timer and throw as many punches as you can.</p>
+      <p>Allow camera access, stand back so your shoulders and arms are visible. Punch straight up into the LEFT or RIGHT translucent zone at the top of the screen — each connecting punch counts.</p>
       <button id="enableCam">Enable Camera</button>
       <div id="camPickerWrap" style="display:none; margin-top:10px; width:100%; max-width:360px;">
         <label for="camSelect" style="display:block; font-size:12px; color:var(--dim); margin-bottom:6px;">Wrong camera showing up? Pick the right one:</label>
@@ -163,18 +122,11 @@
     </div>
   </div>
 
-  <div id="bottombar">
-    <b>SPACE / TAP</b>: Start · Pause &nbsp;&nbsp;|&nbsp;&nbsp; <b>R</b>: Reset
-  </div>
-
+  <div id="bottombar"><b>SPACE / TAP</b>: Start · Pause &nbsp;&nbsp;|&nbsp;&nbsp; <b>R</b>: Reset</div>
 </div>
 
 <script type="module">
-import {
-  PoseLandmarker,
-  FilesetResolver,
-  DrawingUtils
-} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
+import { PoseLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
 
 const video = document.getElementById('webcam');
 const overlay = document.getElementById('overlay');
@@ -195,9 +147,12 @@ const camPickerWrap = document.getElementById('camPickerWrap');
 const camSelect = document.getElementById('camSelect');
 const dbgLeft = document.getElementById('dbgLeft');
 const dbgRight = document.getElementById('dbgRight');
+const zoneLeftEl = document.getElementById('zoneLeft');
+const zoneRightEl = document.getElementById('zoneRight');
 
 const DURATION = 45;
 const BEST_KEY = 'punchcounter_best';
+const ZONE_HEIGHT_FRAC = 0.34; // matches #zones CSS height:34%
 
 let poseLandmarker = null;
 let running = false;
@@ -209,90 +164,77 @@ let lastTs = performance.now();
 
 bestVal.textContent = best;
 
-// ---- Per-arm punch state machine, driven by ELBOW ANGLE (3D) ----
-// A punch = arm swings from bent (guard/retracted) to straight
-// (extended) and back. Angle is scale- and direction-invariant, so
-// it works whether you punch sideways, up, or straight at the camera
-// (a straight-at-camera punch barely changes flat x/y wrist-shoulder
-// distance, which is why distance-based detection was missing punches).
-const arms = {
-  left:  { state: 'retracted', cooldownUntil: 0 },
-  right: { state: 'retracted', cooldownUntil: 0 }
+// A punch counts only when the WRIST physically enters the top zone
+// (left or right half) AND the elbow is extended — fast, unambiguous,
+// no direction-of-punch ambiguity. Debounced per hand so one punch = one count.
+const hands = {
+  left:  { inZone: false, cooldownUntil: 0 },
+  right: { inZone: false, cooldownUntil: 0 }
 };
-
-// Tune these two if it's over/under-counting:
-const EXTEND_ANGLE = 150;   // degrees — arm counted "straight" above this
-const RETRACT_ANGLE = 110;  // degrees — must bend back below this to re-arm
-const COOLDOWN_MS = 200;    // minimum gap between counts on the same arm
-const MIN_VISIBILITY = 0.4; // ignore a landmark if the model isn't confident it's on-screen
+const EXTEND_ANGLE = 130;   // elbow must be at least this straight to count as a real punch
+const COOLDOWN_MS = 180;
+const MIN_VISIBILITY = 0.35;
 
 function angleAtJoint(a, b, c){
-  // angle at point b, formed by rays b->a and b->c, using x/y/z
-  const v1 = { x: a.x - b.x, y: a.y - b.y, z: (a.z||0) - (b.z||0) };
-  const v2 = { x: c.x - b.x, y: c.y - b.y, z: (c.z||0) - (b.z||0) };
+  const v1 = { x:a.x-b.x, y:a.y-b.y, z:(a.z||0)-(b.z||0) };
+  const v2 = { x:c.x-b.x, y:c.y-b.y, z:(c.z||0)-(b.z||0) };
   const dot = v1.x*v2.x + v1.y*v2.y + v1.z*v2.z;
-  const mag1 = Math.hypot(v1.x, v1.y, v1.z);
-  const mag2 = Math.hypot(v2.x, v2.y, v2.z);
-  if (mag1 === 0 || mag2 === 0) return null;
-  const cos = Math.min(1, Math.max(-1, dot / (mag1 * mag2)));
-  return Math.acos(cos) * 180 / Math.PI;
+  const m1 = Math.hypot(v1.x,v1.y,v1.z), m2 = Math.hypot(v2.x,v2.y,v2.z);
+  if (!m1 || !m2) return null;
+  return Math.acos(Math.min(1,Math.max(-1, dot/(m1*m2)))) * 180/Math.PI;
 }
-
-function visible(lm){
-  // tasks-vision landmarks expose `visibility` (0-1) when the model estimates it
-  return lm && (lm.visibility === undefined || lm.visibility >= MIN_VISIBILITY);
-}
+function visible(lm){ return lm && (lm.visibility === undefined || lm.visibility >= MIN_VISIBILITY); }
 
 function processPunches(lm, now){
   const joints = {
     left:  { shoulder: lm[11], elbow: lm[13], wrist: lm[15] },
     right: { shoulder: lm[12], elbow: lm[14], wrist: lm[16] }
   };
-
   for (const side of ['left','right']){
     const { shoulder, elbow, wrist } = joints[side];
-    const arm = arms[side];
+    const hand = hands[side];
     const dbgEl = side === 'left' ? dbgLeft : dbgRight;
+    // NOTE: video/canvas are CSS-mirrored, so the raw landmark's LEFT
+    // hand appears on the viewer's RIGHT side of the screen.
+    const zoneEl = side === 'left' ? zoneRightEl : zoneLeftEl;
 
     if (!shoulder || !elbow || !wrist || !visible(shoulder) || !visible(elbow) || !visible(wrist)){
-      dbgEl.textContent = 'not visible';
-      dbgEl.className = 'lost';
+      dbgEl.textContent = 'not visible'; dbgEl.className = 'lost';
       continue;
     }
 
     const angle = angleAtJoint(shoulder, elbow, wrist);
-    if (angle === null) continue;
+    const wristInTopZone = wrist.y <= ZONE_HEIGHT_FRAC;
+    const straight = angle !== null && angle >= EXTEND_ANGLE;
+    const qualifies = wristInTopZone && straight;
 
-    dbgEl.textContent = Math.round(angle) + '°';
-    dbgEl.className = arm.state === 'extended' ? 'extended' : 'retracted';
+    dbgEl.textContent = (angle ? Math.round(angle)+'°' : '—') + (wristInTopZone ? ' ▲' : '');
+    dbgEl.className = qualifies ? 'extended' : 'retracted';
 
-    if (arm.state === 'retracted' && angle > EXTEND_ANGLE && now > arm.cooldownUntil){
-      arm.state = 'extended';
-      arm.cooldownUntil = now + COOLDOWN_MS;
-      countPunch();
-    } else if (arm.state === 'extended' && angle < RETRACT_ANGLE){
-      arm.state = 'retracted';
+    if (qualifies && !hand.inZone && now > hand.cooldownUntil){
+      hand.inZone = true;
+      hand.cooldownUntil = now + COOLDOWN_MS;
+      countPunch(zoneEl);
+    } else if (!wristInTopZone){
+      hand.inZone = false; // must fully leave the zone before it can count again
     }
   }
 }
 
-function countPunch(){
+function countPunch(zoneEl){
   reps += 1;
   repsVal.textContent = reps;
-  flashEl.classList.remove('hit');
-  void flashEl.offsetWidth;
-  flashEl.classList.add('hit');
+  flashEl.classList.remove('hit'); void flashEl.offsetWidth; flashEl.classList.add('hit');
+  zoneEl.classList.remove('hit'); void zoneEl.offsetWidth; zoneEl.classList.add('hit');
+  setTimeout(() => zoneEl.classList.remove('hit'), 120);
   if (navigator.vibrate) navigator.vibrate(30);
 }
 
-// ---- Camera handling ----
 let currentStream = null;
 let modelLoaded = false;
 
 async function startStream(deviceId){
-  if (currentStream){
-    currentStream.getTracks().forEach(t => t.stop());
-  }
+  if (currentStream) currentStream.getTracks().forEach(t => t.stop());
   const constraints = {
     video: deviceId
       ? { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
@@ -313,34 +255,26 @@ async function populateCameraList(){
   camSelect.innerHTML = '';
   cams.forEach(cam => {
     const opt = document.createElement('option');
-    opt.value = cam.deviceId;
-    opt.textContent = cam.label || 'Camera';
+    opt.value = cam.deviceId; opt.textContent = cam.label || 'Camera';
     camSelect.appendChild(opt);
   });
-  if (cams.length > 1){
-    camPickerWrap.style.display = 'block';
-  }
+  if (cams.length > 1) camPickerWrap.style.display = 'block';
   return cams;
 }
 
 async function setup(){
   try{
     await startStream(null);
-
     const cams = await populateCameraList();
     const currentTrack = currentStream.getVideoTracks()[0];
     const currentLabel = (currentTrack.label || '').toLowerCase();
     const isLikelyVirtual = /iriun|obs|droidcam|virtual|snap camera/.test(currentLabel);
-
     if (isLikelyVirtual && cams.length > 1){
       const real = cams.find(c => !/iriun|obs|droidcam|virtual|snap camera/i.test(c.label));
-      if (real){
-        await startStream(real.deviceId);
-      }
+      if (real) await startStream(real.deviceId);
     }
     const activeId = currentStream.getVideoTracks()[0].getSettings().deviceId;
     if (activeId) camSelect.value = activeId;
-
     camReady = true;
     permissionEl.classList.add('hidden');
   }catch(err){
@@ -361,7 +295,6 @@ async function setup(){
     numPoses: 1
   });
   modelLoaded = true;
-
   requestAnimationFrame(loop);
 }
 
@@ -369,7 +302,6 @@ function resizeCanvas(){
   overlay.width = video.videoWidth || video.clientWidth;
   overlay.height = video.videoHeight || video.clientHeight;
 }
-
 const drawingUtils = () => new DrawingUtils(ctx);
 
 function loop(ts){
@@ -382,17 +314,11 @@ function loop(ts){
 
   if (result.landmarks && result.landmarks.length > 0){
     const lm = result.landmarks[0];
-    const du = drawingUtils();
-    du.drawConnectors(lm, PoseLandmarker.POSE_CONNECTIONS, { color: '#3ea6ff', lineWidth: 3 });
-
-    if (running){
-      processPunches(lm, ts);
-    }
+    new DrawingUtils(ctx).drawConnectors(lm, PoseLandmarker.POSE_CONNECTIONS, { color: '#3ea6ff', lineWidth: 3 });
+    if (running) processPunches(lm, ts);
   } else {
-    dbgLeft.textContent = 'no person';
-    dbgLeft.className = 'lost';
-    dbgRight.textContent = 'no person';
-    dbgRight.className = 'lost';
+    dbgLeft.textContent = 'no person'; dbgLeft.className = 'lost';
+    dbgRight.textContent = 'no person'; dbgRight.className = 'lost';
   }
 
   if (running){
@@ -401,9 +327,7 @@ function loop(ts){
     timeLeft = Math.max(0, timeLeft - dt);
     timerVal.textContent = timeLeft.toFixed(1);
     timerStat.classList.toggle('low', timeLeft <= 10);
-    if (timeLeft <= 0){
-      endRound();
-    }
+    if (timeLeft <= 0) endRound();
   } else {
     lastTs = ts;
   }
@@ -412,67 +336,45 @@ function loop(ts){
 function startRound(){
   if (!camReady) return;
   if (timeLeft <= 0) resetRound(false);
-  running = true;
-  lastTs = performance.now();
-  centerMsg.classList.add('hidden');
-  resultsEl.classList.add('hidden');
+  running = true; lastTs = performance.now();
+  centerMsg.classList.add('hidden'); resultsEl.classList.add('hidden');
 }
-
 function pauseRound(){
   running = false;
   centerMsg.querySelector('.sub').textContent = 'SPACE / TAP to resume';
   centerMsg.classList.remove('hidden');
 }
-
 function endRound(){
-  running = false;
-  timeLeft = 0;
-  timerVal.textContent = '0.0';
-  if (reps > best){
-    best = reps;
-    bestVal.textContent = best;
-    localStorage.setItem(BEST_KEY, String(best));
-  }
+  running = false; timeLeft = 0; timerVal.textContent = '0.0';
+  if (reps > best){ best = reps; bestVal.textContent = best; localStorage.setItem(BEST_KEY, String(best)); }
   finalReps.textContent = reps;
   resultsEl.classList.remove('hidden');
 }
-
 function resetRound(hideResults = true){
-  reps = 0;
-  timeLeft = DURATION;
-  repsVal.textContent = '0';
-  timerVal.textContent = DURATION.toFixed(1);
+  reps = 0; timeLeft = DURATION;
+  repsVal.textContent = '0'; timerVal.textContent = DURATION.toFixed(1);
   timerStat.classList.remove('low');
-  arms.left.state = 'retracted';
-  arms.right.state = 'retracted';
+  hands.left.inZone = false; hands.right.inZone = false;
   running = false;
   centerMsg.querySelector('.sub').textContent = 'SPACE / TAP to start';
   centerMsg.classList.remove('hidden');
   if (hideResults) resultsEl.classList.add('hidden');
 }
-
 function toggleRound(){
   if (resultsEl && !resultsEl.classList.contains('hidden')) return;
   if (running) pauseRound(); else startRound();
 }
 
 enableCamBtn.addEventListener('click', setup);
-
 camSelect.addEventListener('change', async () => {
-  try{
-    await startStream(camSelect.value);
-  }catch(err){
-    permError.textContent = 'Could not switch camera: ' + err.message;
-  }
+  try{ await startStream(camSelect.value); }
+  catch(err){ permError.textContent = 'Could not switch camera: ' + err.message; }
 });
 restartBtn.addEventListener('click', () => { resetRound(true); startRound(); });
-
-document.getElementById('stage').addEventListener('click', (e) => {
-  if (!camReady) return;
-  if (!resultsEl.classList.contains('hidden')) return;
+document.getElementById('stage').addEventListener('click', () => {
+  if (!camReady || !resultsEl.classList.contains('hidden') === false) return;
   toggleRound();
 });
-
 window.addEventListener('keydown', (e) => {
   if (e.code === 'Space'){
     e.preventDefault();
@@ -483,7 +385,6 @@ window.addEventListener('keydown', (e) => {
     resetRound(true);
   }
 });
-
 window.addEventListener('resize', resizeCanvas);
 </script>
 </body>
