@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>Punch Counter — 45s Challenge</title>
+<title>One Punch Man — Beat Me If U Can</title>
 <style>
   :root{
     --bg:#0b0d10; --bar:#15181c; --accent:#ff8a1e;
@@ -20,7 +20,8 @@
   .stat{ text-align:center; }
   .stat .label{ font-size:11px; letter-spacing:1.5px; color:var(--dim); text-transform:uppercase; margin-top:2px;}
   .stat .value{ font-size:clamp(28px,5vw,44px); font-weight:800; line-height:1; }
-  #title-stat .value{ color:var(--accent); font-size:clamp(22px,4vw,34px); }
+  #title-stat .value{ color:var(--accent); font-size:clamp(20px,3.6vw,30px); letter-spacing:1px; }
+  #title-stat .label{ font-style:italic; }
   #best-stat .value{ color:var(--accent); font-size:clamp(22px,4vw,34px); }
   #timer-stat .value{ font-variant-numeric:tabular-nums; }
   #timer-stat.low .value{ color:#ff4d4d; }
@@ -30,7 +31,6 @@
     transform:translate(-50%,-50%) scaleX(-1); height:100%; width:auto; min-width:100%; object-fit:cover; }
   #overlay{ pointer-events:none; }
 
-  /* Punch zones — fixed, NOT mirrored, so labels read correctly */
   #zones{ position:absolute; top:0; left:0; right:0; height:34%; z-index:6; display:flex; pointer-events:none; }
   .zone{ flex:1; display:flex; align-items:center; justify-content:center;
     border-bottom:3px solid; font-weight:900; font-size:clamp(16px,3vw,26px);
@@ -71,8 +71,10 @@
   #debugPanel .lost{ color:#ff6b6b; }
 
   #permission{ position:absolute; inset:0; background:var(--bg); display:flex; flex-direction:column;
-    align-items:center; justify-content:center; gap:16px; z-index:20; padding:24px; text-align:center; }
+    align-items:center; justify-content:center; gap:12px; z-index:20; padding:24px; text-align:center; }
   #permission.hidden{ display:none; }
+  #permission h2{ margin:0; font-size:26px; letter-spacing:1px; color:var(--accent); }
+  #permission .tagline{ margin:-6px 0 8px; font-style:italic; color:var(--dim); font-size:14px; }
   #permission button{ background:var(--accent); border:none; color:#1a1300; font-weight:800;
     padding:14px 32px; border-radius:8px; font-size:16px; cursor:pointer; }
   #permission p{ color:var(--dim); max-width:420px; font-size:14px; line-height:1.5;}
@@ -82,7 +84,7 @@
 <div id="app">
 
   <div id="topbar">
-    <div class="stat" id="title-stat"><div class="value">PUNCH</div><div class="label">45s Challenge</div></div>
+    <div class="stat" id="title-stat"><div class="value">ONE PUNCH MAN</div><div class="label">Beat me if u can</div></div>
     <div class="stat" id="reps-stat"><div class="value" id="repsVal">0</div><div class="label">Punches</div></div>
     <div class="stat" id="best-stat"><div class="value" id="bestVal">0</div><div class="label">Best</div></div>
     <div class="stat" id="timer-stat"><div class="value" id="timerVal">45.0</div><div class="label">Seconds</div></div>
@@ -110,8 +112,9 @@
     </div>
 
     <div id="permission">
+      <h2>ONE PUNCH MAN</h2>
+      <div class="tagline">Beat me if u can</div>
       <div style="font-size:40px;">🥊</div>
-      <div style="font-weight:800; font-size:20px;">Punch Counter</div>
       <p>Allow camera access, stand back so your shoulders and arms are visible. Punch straight up into the LEFT or RIGHT translucent zone at the top of the screen — each connecting punch counts.</p>
       <button id="enableCam">Enable Camera</button>
       <div id="camPickerWrap" style="display:none; margin-top:10px; width:100%; max-width:360px;">
@@ -152,7 +155,7 @@ const zoneRightEl = document.getElementById('zoneRight');
 
 const DURATION = 45;
 const BEST_KEY = 'punchcounter_best';
-const ZONE_HEIGHT_FRAC = 0.34; // matches #zones CSS height:34%
+const ZONE_HEIGHT_FRAC = 0.34;
 
 let poseLandmarker = null;
 let running = false;
@@ -164,14 +167,73 @@ let lastTs = performance.now();
 
 bestVal.textContent = best;
 
-// A punch counts only when the WRIST physically enters the top zone
-// (left or right half) AND the elbow is extended — fast, unambiguous,
-// no direction-of-punch ambiguity. Debounced per hand so one punch = one count.
+// ---- Sound effects (synthesized, no external audio files needed) ----
+let audioCtx = null;
+function ensureAudio(){
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+function playPunchSound(){
+  if (!audioCtx) return;
+  const t0 = audioCtx.currentTime;
+
+  // low "thud" body
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'square';
+  osc.frequency.setValueAtTime(180, t0);
+  osc.frequency.exponentialRampToValueAtTime(55, t0 + 0.09);
+  gain.gain.setValueAtTime(0.5, t0);
+  gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.14);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(t0); osc.stop(t0 + 0.15);
+
+  // sharp "crack" transient (white-noise burst)
+  const bufferSize = audioCtx.sampleRate * 0.05;
+  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) data[i] = (Math.random()*2-1) * (1 - i/bufferSize);
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = buffer;
+  const noiseGain = audioCtx.createGain();
+  noiseGain.gain.setValueAtTime(0.35, t0);
+  noiseGain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.05);
+  noise.connect(noiseGain).connect(audioCtx.destination);
+  noise.start(t0);
+}
+function playStartSound(){
+  if (!audioCtx) return;
+  const t0 = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(440, t0);
+  osc.frequency.exponentialRampToValueAtTime(880, t0 + 0.15);
+  gain.gain.setValueAtTime(0.3, t0);
+  gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.2);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(t0); osc.stop(t0 + 0.2);
+}
+function playEndSound(){
+  if (!audioCtx) return;
+  const t0 = audioCtx.currentTime;
+  [440, 349, 293].forEach((f, i) => {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(f, t0 + i*0.12);
+    gain.gain.setValueAtTime(0.25, t0 + i*0.12);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + i*0.12 + 0.25);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(t0 + i*0.12); osc.stop(t0 + i*0.12 + 0.25);
+  });
+}
+
 const hands = {
   left:  { inZone: false, cooldownUntil: 0 },
   right: { inZone: false, cooldownUntil: 0 }
 };
-const EXTEND_ANGLE = 130;   // elbow must be at least this straight to count as a real punch
+const EXTEND_ANGLE = 130;
 const COOLDOWN_MS = 180;
 const MIN_VISIBILITY = 0.35;
 
@@ -194,8 +256,6 @@ function processPunches(lm, now){
     const { shoulder, elbow, wrist } = joints[side];
     const hand = hands[side];
     const dbgEl = side === 'left' ? dbgLeft : dbgRight;
-    // NOTE: video/canvas are CSS-mirrored, so the raw landmark's LEFT
-    // hand appears on the viewer's RIGHT side of the screen.
     const zoneEl = side === 'left' ? zoneRightEl : zoneLeftEl;
 
     if (!shoulder || !elbow || !wrist || !visible(shoulder) || !visible(elbow) || !visible(wrist)){
@@ -216,7 +276,7 @@ function processPunches(lm, now){
       hand.cooldownUntil = now + COOLDOWN_MS;
       countPunch(zoneEl);
     } else if (!wristInTopZone){
-      hand.inZone = false; // must fully leave the zone before it can count again
+      hand.inZone = false;
     }
   }
 }
@@ -227,6 +287,7 @@ function countPunch(zoneEl){
   flashEl.classList.remove('hit'); void flashEl.offsetWidth; flashEl.classList.add('hit');
   zoneEl.classList.remove('hit'); void zoneEl.offsetWidth; zoneEl.classList.add('hit');
   setTimeout(() => zoneEl.classList.remove('hit'), 120);
+  playPunchSound();
   if (navigator.vibrate) navigator.vibrate(30);
 }
 
@@ -263,6 +324,7 @@ async function populateCameraList(){
 }
 
 async function setup(){
+  ensureAudio();
   try{
     await startStream(null);
     const cams = await populateCameraList();
@@ -302,7 +364,6 @@ function resizeCanvas(){
   overlay.width = video.videoWidth || video.clientWidth;
   overlay.height = video.videoHeight || video.clientHeight;
 }
-const drawingUtils = () => new DrawingUtils(ctx);
 
 function loop(ts){
   requestAnimationFrame(loop);
@@ -335,9 +396,11 @@ function loop(ts){
 
 function startRound(){
   if (!camReady) return;
+  ensureAudio();
   if (timeLeft <= 0) resetRound(false);
   running = true; lastTs = performance.now();
   centerMsg.classList.add('hidden'); resultsEl.classList.add('hidden');
+  playStartSound();
 }
 function pauseRound(){
   running = false;
@@ -349,6 +412,7 @@ function endRound(){
   if (reps > best){ best = reps; bestVal.textContent = best; localStorage.setItem(BEST_KEY, String(best)); }
   finalReps.textContent = reps;
   resultsEl.classList.remove('hidden');
+  playEndSound();
 }
 function resetRound(hideResults = true){
   reps = 0; timeLeft = DURATION;
@@ -372,7 +436,8 @@ camSelect.addEventListener('change', async () => {
 });
 restartBtn.addEventListener('click', () => { resetRound(true); startRound(); });
 document.getElementById('stage').addEventListener('click', () => {
-  if (!camReady || !resultsEl.classList.contains('hidden') === false) return;
+  if (!camReady) return;
+  if (!resultsEl.classList.contains('hidden')) return;
   toggleRound();
 });
 window.addEventListener('keydown', (e) => {
