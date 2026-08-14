@@ -1,0 +1,2163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>BRainrot Run 💀</title>
+
+<style>
+*{
+    box-sizing:border-box;
+    margin:0;
+    padding:0;
+}
+
+html,body{
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:#050505;
+    color:#fff;
+    font-family:Arial,Helvetica,sans-serif;
+}
+
+body{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+}
+
+#app{
+    width:100%;
+    height:100%;
+    max-width:1500px;
+    position:relative;
+    overflow:hidden;
+    background:
+        radial-gradient(circle at 50% 20%,#24103d 0%,#080808 45%,#000 100%);
+}
+
+/* =========================
+   HEADER
+========================= */
+
+#header{
+    position:absolute;
+    top:0;
+    left:0;
+    width:100%;
+    height:92px;
+    z-index:20;
+
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+
+    padding:15px 28px;
+
+    background:linear-gradient(
+        180deg,
+        rgba(0,0,0,.95),
+        rgba(0,0,0,.25)
+    );
+}
+
+.logo{
+    font-size:clamp(24px,4vw,48px);
+    font-weight:1000;
+    letter-spacing:-3px;
+    text-transform:uppercase;
+
+    text-shadow:
+        4px 4px 0 #ff00d4,
+        -2px -2px 0 #00ffff;
+}
+
+.logo span{
+    color:#ffe600;
+}
+
+.hud{
+    display:flex;
+    gap:12px;
+}
+
+.hudBox{
+    min-width:105px;
+    text-align:center;
+    padding:8px 15px;
+
+    border:2px solid #fff;
+    background:rgba(0,0,0,.65);
+
+    box-shadow:5px 5px 0 #ff00d4;
+}
+
+.hudLabel{
+    font-size:11px;
+    font-weight:bold;
+    opacity:.65;
+    letter-spacing:2px;
+}
+
+.hudValue{
+    font-size:27px;
+    font-weight:1000;
+    font-family:monospace;
+}
+
+#timer{
+    color:#ffe600;
+}
+
+/* =========================
+   GAME
+========================= */
+
+#game{
+    position:absolute;
+    left:0;
+    top:0;
+    width:100%;
+    height:100%;
+}
+
+canvas{
+    width:100%;
+    height:100%;
+    display:block;
+}
+
+/* =========================
+   CAMERA
+========================= */
+
+#cameraBox{
+    position:absolute;
+    z-index:30;
+    left:22px;
+    bottom:22px;
+
+    width:190px;
+    height:140px;
+
+    background:#000;
+    border:3px solid white;
+
+    box-shadow:7px 7px 0 #00ffff;
+
+    overflow:hidden;
+}
+
+#video{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    transform:scaleX(-1);
+}
+
+#faceStatus{
+    position:absolute;
+    left:0;
+    bottom:0;
+
+    width:100%;
+
+    padding:5px;
+
+    background:rgba(0,0,0,.75);
+
+    font-family:monospace;
+    font-size:11px;
+    text-align:center;
+}
+
+/* =========================
+   START SCREEN
+========================= */
+
+.overlay{
+    position:absolute;
+    z-index:50;
+
+    left:0;
+    top:0;
+
+    width:100%;
+    height:100%;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    background:
+        radial-gradient(
+            circle at center,
+            rgba(80,0,100,.65),
+            rgba(0,0,0,.96)
+        );
+}
+
+.panel{
+    width:min(620px,90%);
+    text-align:center;
+
+    padding:38px 30px;
+
+    border:4px solid white;
+
+    background:#080808;
+
+    box-shadow:
+        12px 12px 0 #ff00d4,
+        -7px -7px 0 #00ffff;
+}
+
+.bigTitle{
+    font-size:clamp(50px,9vw,100px);
+    line-height:.8;
+    font-weight:1000;
+    letter-spacing:-7px;
+
+    color:#ffe600;
+
+    text-shadow:
+        5px 5px 0 #ff00d4,
+        -4px -4px 0 #00ffff;
+
+    margin-bottom:25px;
+}
+
+.subtitle{
+    font-family:monospace;
+    font-size:18px;
+    margin-bottom:22px;
+}
+
+.instructions{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:8px;
+    margin:20px 0;
+}
+
+.instruction{
+    padding:14px 5px;
+    border:2px solid #444;
+    background:#111;
+}
+
+.instruction b{
+    display:block;
+    font-size:24px;
+}
+
+.instruction span{
+    font-size:11px;
+    color:#aaa;
+}
+
+button{
+    border:none;
+    cursor:pointer;
+
+    background:#ffe600;
+    color:#000;
+
+    font-weight:1000;
+    font-size:22px;
+
+    padding:16px 40px;
+
+    margin-top:12px;
+
+    box-shadow:
+        7px 7px 0 #ff00d4,
+        -4px -4px 0 #00ffff;
+
+    transition:.08s;
+}
+
+button:hover{
+    transform:translate(3px,3px);
+    box-shadow:
+        4px 4px 0 #ff00d4,
+        -2px -2px 0 #00ffff;
+}
+
+button:active{
+    transform:translate(7px,7px);
+    box-shadow:none;
+}
+
+.small{
+    margin-top:17px;
+    font-size:11px;
+    color:#888;
+    font-family:monospace;
+}
+
+/* =========================
+   COUNTDOWN
+========================= */
+
+#countdown{
+    display:none;
+}
+
+.countNumber{
+    font-size:150px;
+    font-weight:1000;
+    color:#ffe600;
+    text-shadow:
+        8px 8px 0 #ff00d4,
+        -5px -5px 0 #00ffff;
+}
+
+/* =========================
+   GAME OVER
+========================= */
+
+#gameOver{
+    display:none;
+}
+
+.finalScore{
+    font-family:monospace;
+    font-size:65px;
+    color:#ffe600;
+    margin:15px;
+}
+
+.resultText{
+    font-size:15px;
+    color:#aaa;
+}
+
+/* =========================
+   BRAINROT MESSAGE
+========================= */
+
+#brainrot{
+    position:absolute;
+    z-index:40;
+
+    top:115px;
+    left:50%;
+
+    transform:translateX(-50%) rotate(-2deg);
+
+    font-size:clamp(18px,3vw,34px);
+
+    font-weight:1000;
+
+    color:#fff;
+
+    text-align:center;
+
+    text-shadow:
+        3px 3px 0 #ff00d4,
+        -2px -2px 0 #00ffff;
+
+    pointer-events:none;
+
+    opacity:0;
+
+    transition:.15s;
+}
+
+.shake{
+    animation:shake .16s linear;
+}
+
+@keyframes shake{
+    0%{transform:translate(0,0)}
+    25%{transform:translate(-7px,4px)}
+    50%{transform:translate(7px,-4px)}
+    75%{transform:translate(-4px,-5px)}
+    100%{transform:translate(0,0)}
+}
+
+/* =========================
+   MOBILE
+========================= */
+
+@media(max-width:700px){
+
+    #header{
+        height:72px;
+        padding:10px;
+    }
+
+    .logo{
+        font-size:25px;
+    }
+
+    .hudBox{
+        min-width:70px;
+        padding:5px;
+    }
+
+    .hudValue{
+        font-size:18px;
+    }
+
+    .hudLabel{
+        font-size:8px;
+    }
+
+    #cameraBox{
+        width:120px;
+        height:90px;
+        left:10px;
+        bottom:10px;
+    }
+
+    .panel{
+        padding:25px 15px;
+    }
+
+    .bigTitle{
+        letter-spacing:-4px;
+    }
+
+    .instructions{
+        gap:4px;
+    }
+
+    .instruction{
+        padding:10px 3px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div id="app">
+
+    <!-- HEADER -->
+    <div id="header">
+
+        <div class="logo">
+            BR<span>AI</span>NROT RUN 💀
+        </div>
+
+        <div class="hud">
+
+            <div class="hudBox">
+                <div class="hudLabel">TIME</div>
+                <div class="hudValue" id="timer">60.0</div>
+            </div>
+
+            <div class="hudBox">
+                <div class="hudLabel">SCORE</div>
+                <div class="hudValue" id="score">0</div>
+            </div>
+
+        </div>
+    </div>
+
+
+    <!-- GAME -->
+    <div id="game">
+        <canvas id="canvas"></canvas>
+    </div>
+
+
+    <!-- BRAINROT TEXT -->
+    <div id="brainrot"></div>
+
+
+    <!-- CAMERA -->
+    <div id="cameraBox">
+
+        <video
+            id="video"
+            autoplay
+            muted
+            playsinline>
+        </video>
+
+        <div id="faceStatus">
+            CAMERA OFF
+        </div>
+
+    </div>
+
+
+    <!-- START -->
+    <div class="overlay" id="startScreen">
+
+        <div class="panel">
+
+            <div class="bigTitle">
+                BRainrot<br>RUN 💀
+            </div>
+
+            <div class="subtitle">
+                HOW LONG CAN YOUR BRAIN SURVIVE?
+            </div>
+
+            <div class="instructions">
+
+                <div class="instruction">
+                    <b>←</b>
+                    <span>HEAD LEFT</span>
+                </div>
+
+                <div class="instruction">
+                    <b>●</b>
+                    <span>HEAD CENTER</span>
+                </div>
+
+                <div class="instruction">
+                    <b>→</b>
+                    <span>HEAD RIGHT</span>
+                </div>
+
+            </div>
+
+            <p style="color:#aaa;font-family:monospace">
+                Avoid the obstacles for 60 seconds.
+            </p>
+
+            <button id="startButton">
+                START RUN 💀
+            </button>
+
+            <div class="small">
+                CAMERA ACCESS IS REQUIRED
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- COUNTDOWN -->
+    <div class="overlay" id="countdown">
+
+        <div class="panel">
+
+            <div class="subtitle">
+                GET READY...
+            </div>
+
+            <div class="countNumber" id="countNumber">
+                3
+            </div>
+
+            <div class="subtitle">
+                MOVE YOUR HEAD
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- GAME OVER -->
+    <div class="overlay" id="gameOver">
+
+        <div class="panel">
+
+            <div class="bigTitle" style="font-size:60px">
+                GAME<br>OVER 💀
+            </div>
+
+            <div class="subtitle">
+                YOUR BRAIN HAS LEFT THE CHAT
+            </div>
+
+            <div class="finalScore" id="finalScore">
+                0
+            </div>
+
+            <div class="resultText" id="resultText">
+                SCORE
+            </div>
+
+            <button id="restartButton">
+                RUN IT BACK 🔥
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- MEDIAPIPE -->
+<script type="module">
+
+import {
+    FaceLandmarker,
+    FilesetResolver
+} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/+esm";
+
+
+/* =========================================================
+   DOM
+========================================================= */
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+const video = document.getElementById("video");
+
+const startScreen =
+    document.getElementById("startScreen");
+
+const countdownScreen =
+    document.getElementById("countdown");
+
+const gameOverScreen =
+    document.getElementById("gameOver");
+
+const countNumber =
+    document.getElementById("countNumber");
+
+const timerEl =
+    document.getElementById("timer");
+
+const scoreEl =
+    document.getElementById("score");
+
+const faceStatus =
+    document.getElementById("faceStatus");
+
+const brainrot =
+    document.getElementById("brainrot");
+
+const finalScore =
+    document.getElementById("finalScore");
+
+const resultText =
+    document.getElementById("resultText");
+
+
+/* =========================================================
+   CANVAS
+========================================================= */
+
+let W = 1280;
+let H = 720;
+
+function resize(){
+
+    const rect =
+        canvas.getBoundingClientRect();
+
+    W = rect.width;
+    H = rect.height;
+
+    canvas.width =
+        Math.floor(W * devicePixelRatio);
+
+    canvas.height =
+        Math.floor(H * devicePixelRatio);
+
+    ctx.setTransform(
+        devicePixelRatio,
+        0,
+        0,
+        devicePixelRatio,
+        0,
+        0
+    );
+}
+
+window.addEventListener("resize",resize);
+resize();
+
+
+/* =========================================================
+   GAME VARIABLES
+========================================================= */
+
+const GAME_TIME = 60;
+
+let gameRunning = false;
+let gameFinished = false;
+
+let startTime = 0;
+
+let elapsed = 0;
+let score = 0;
+
+let obstacles = [];
+
+let spawnTimer = 0;
+
+let lastFrame = performance.now();
+
+let runId = null;
+
+
+/* =========================================================
+   LANE SYSTEM
+========================================================= */
+
+let playerLane = 1;
+let targetLane = 1;
+
+const lanePositions = [0.27,0.50,0.73];
+
+function laneX(lane){
+
+    return W * lanePositions[lane];
+}
+
+
+/* =========================================================
+   PLAYER
+========================================================= */
+
+const player = {
+
+    x:laneX(1),
+
+    y:0,
+
+    width:54,
+
+    height:76,
+
+    lane:1
+
+};
+
+
+/* =========================================================
+   FACE TRACKING
+========================================================= */
+
+let faceLandmarker = null;
+
+let cameraReady = false;
+
+let faceX = 0.5;
+
+let lastFaceTime = 0;
+
+let stableLane = 1;
+
+let candidateLane = 1;
+
+let candidateSince = 0;
+
+
+/* =========================================================
+   CREATE FACE LANDMARKER
+========================================================= */
+
+async function setupFaceTracking(){
+
+    try{
+
+        faceStatus.textContent =
+            "LOADING AI...";
+
+        const vision =
+            await FilesetResolver.forVisionTasks(
+                "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm"
+            );
+
+        faceLandmarker =
+            await FaceLandmarker.createFromOptions(
+                vision,
+                {
+                    baseOptions:{
+                        modelAssetPath:
+                        "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+
+                        delegate:"GPU"
+                    },
+
+                    outputFaceBlendshapes:false,
+
+                    runningMode:"VIDEO",
+
+                    numFaces:1
+                }
+            );
+
+        faceStatus.textContent =
+            "AI READY";
+
+    }catch(error){
+
+        console.error(error);
+
+        faceStatus.textContent =
+            "AI ERROR";
+
+    }
+
+}
+
+
+/* =========================================================
+   CAMERA
+========================================================= */
+
+async function setupCamera(){
+
+    try{
+
+        const stream =
+            await navigator.mediaDevices.getUserMedia({
+
+                video:{
+                    width:{ideal:640},
+                    height:{ideal:480},
+                    facingMode:"user"
+                },
+
+                audio:false
+
+            });
+
+        video.srcObject = stream;
+
+        await video.play();
+
+        cameraReady = true;
+
+        faceStatus.textContent =
+            "CAMERA READY";
+
+    }catch(error){
+
+        console.error(error);
+
+        alert(
+            "Camera permission is required to play BRainrot Run."
+        );
+
+        faceStatus.textContent =
+            "CAMERA BLOCKED";
+
+    }
+
+}
+
+
+/* =========================================================
+   FACE DETECTION
+========================================================= */
+
+function detectFace(){
+
+    if(
+        !faceLandmarker ||
+        !cameraReady ||
+        video.readyState < 2
+    ){
+        requestAnimationFrame(detectFace);
+        return;
+    }
+
+    const now = performance.now();
+
+    try{
+
+        const result =
+            faceLandmarker.detectForVideo(
+                video,
+                now
+            );
+
+        if(
+            result.faceLandmarks &&
+            result.faceLandmarks.length > 0
+        ){
+
+            const landmarks =
+                result.faceLandmarks[0];
+
+            /*
+                Nose landmark.
+                MediaPipe landmark #1 is near the nose.
+            */
+
+            const nose =
+                landmarks[1];
+
+            if(nose){
+
+                /*
+                    Mirror because webcam is mirrored.
+                */
+
+                const detectedX =
+                    1 - nose.x;
+
+                /*
+                    Smooth the movement.
+                */
+
+                faceX =
+                    faceX * 0.75 +
+                    detectedX * 0.25;
+
+                lastFaceTime = now;
+
+                faceStatus.textContent =
+                    "FACE LOCKED";
+
+                updateHeadLane(now);
+
+            }
+
+        }else{
+
+            if(now-lastFaceTime > 500){
+
+                faceStatus.textContent =
+                    "FIND YOUR FACE";
+
+            }
+
+        }
+
+    }catch(error){
+
+        console.error(error);
+
+    }
+
+    requestAnimationFrame(detectFace);
+
+}
+
+
+/* =========================================================
+   HEAD → LANE
+========================================================= */
+
+function updateHeadLane(now){
+
+    let detectedLane;
+
+    /*
+        Wide center zone.
+        This prevents annoying lane flicker.
+    */
+
+    if(faceX < 0.36){
+
+        detectedLane = 0;
+
+    }else if(faceX > 0.64){
+
+        detectedLane = 2;
+
+    }else{
+
+        detectedLane = 1;
+
+    }
+
+
+    /*
+        HYSTERESIS / STABILITY
+
+        Face must remain in a new zone
+        briefly before lane changes.
+    */
+
+    if(detectedLane !== candidateLane){
+
+        candidateLane =
+            detectedLane;
+
+        candidateSince =
+            now;
+
+    }
+
+    if(
+        detectedLane === candidateLane &&
+        now-candidateSince > 130
+    ){
+
+        stableLane =
+            detectedLane;
+
+        targetLane =
+            detectedLane;
+
+    }
+
+}
+
+
+/* =========================================================
+   START BUTTON
+========================================================= */
+
+document
+.getElementById("startButton")
+.addEventListener("click",startGame);
+
+document
+.getElementById("restartButton")
+.addEventListener("click",startGame);
+
+
+async function startGame(){
+
+    if(!cameraReady){
+
+        await setupCamera();
+
+    }
+
+    if(!faceLandmarker){
+
+        await setupFaceTracking();
+
+    }
+
+    if(!cameraReady || !faceLandmarker){
+
+        return;
+
+    }
+
+
+    /*
+        Ask server for a unique run.
+    */
+
+    try{
+
+        const response =
+            await fetch("/api/score",{
+
+                method:"POST",
+
+                headers:{
+                    "Content-Type":
+                    "application/json"
+                },
+
+                body:JSON.stringify({
+                    action:"start"
+                })
+
+            });
+
+        const data =
+            await response.json();
+
+        runId =
+            data.runId || null;
+
+    }catch(error){
+
+        console.warn(
+            "Server unavailable; local game still works."
+        );
+
+        runId = null;
+
+    }
+
+
+    resetGame();
+
+    startScreen.style.display =
+        "none";
+
+    gameOverScreen.style.display =
+        "none";
+
+    countdownScreen.style.display =
+        "flex";
+
+
+    let count = 3;
+
+    countNumber.textContent =
+        count;
+
+    const interval =
+        setInterval(()=>{
+
+            count--;
+
+            if(count <= 0){
+
+                clearInterval(interval);
+
+                countdownScreen.style.display =
+                    "none";
+
+                beginActualRun();
+
+            }else{
+
+                countNumber.textContent =
+                    count;
+
+            }
+
+        },800);
+
+}
+
+
+/* =========================================================
+   RESET
+========================================================= */
+
+function resetGame(){
+
+    gameRunning = false;
+    gameFinished = false;
+
+    elapsed = 0;
+    score = 0;
+
+    obstacles = [];
+
+    spawnTimer = 0;
+
+    playerLane = 1;
+    targetLane = 1;
+
+    stableLane = 1;
+    candidateLane = 1;
+
+    faceX = 0.5;
+
+    timerEl.textContent =
+        GAME_TIME.toFixed(1);
+
+    scoreEl.textContent =
+        "0";
+
+    player.x =
+        laneX(1);
+
+}
+
+
+/* =========================================================
+   ACTUAL START
+========================================================= */
+
+function beginActualRun(){
+
+    gameRunning = true;
+
+    gameFinished = false;
+
+    startTime =
+        performance.now();
+
+    lastFrame =
+        performance.now();
+
+    showBrainrot(
+        "LOCK IN 💀"
+    );
+
+    requestAnimationFrame(gameLoop);
+
+}
+
+
+/* =========================================================
+   OBSTACLE CREATION
+========================================================= */
+
+function spawnObstacle(){
+
+    /*
+        Don't always spawn only one.
+        Sometimes create two obstacles
+        leaving exactly one safe lane.
+    */
+
+    const difficulty =
+        Math.min(1,elapsed/GAME_TIME);
+
+    const roll =
+        Math.random();
+
+    if(roll < 0.22 + difficulty*0.20){
+
+        /*
+            TWO OBSTACLES
+        */
+
+        const safeLane =
+            Math.floor(
+                Math.random()*3
+            );
+
+        for(let lane=0;lane<3;lane++){
+
+            if(lane !== safeLane){
+
+                obstacles.push({
+
+                    lane,
+
+                    y:-100,
+
+                    width:90,
+
+                    height:90,
+
+                    speed:
+                        230 +
+                        difficulty*180
+
+                });
+
+            }
+
+        }
+
+    }else{
+
+        /*
+            ONE OBSTACLE
+        */
+
+        obstacles.push({
+
+            lane:
+                Math.floor(
+                    Math.random()*3
+                ),
+
+            y:-100,
+
+            width:90,
+
+            height:90,
+
+            speed:
+                230 +
+                difficulty*180
+
+        });
+
+    }
+
+}
+
+
+/* =========================================================
+   UPDATE GAME
+========================================================= */
+
+function updateGame(dt){
+
+    elapsed =
+        (performance.now()-startTime)/1000;
+
+    /*
+        60 second limit
+    */
+
+    if(elapsed >= GAME_TIME){
+
+        elapsed =
+            GAME_TIME;
+
+        finishGame(
+            "60 SECONDS SURVIVED 🔥"
+        );
+
+        return;
+
+    }
+
+
+    /*
+        TIMER
+    */
+
+    timerEl.textContent =
+        Math.max(
+            0,
+            GAME_TIME-elapsed
+        ).toFixed(1);
+
+
+    /*
+        SCORE
+
+        Survival:
+        10 points / second
+    */
+
+    score +=
+        10 * dt;
+
+
+    /*
+        Lane movement
+    */
+
+    const desiredX =
+        laneX(targetLane);
+
+    player.x +=
+        (desiredX-player.x)
+        * Math.min(1,dt*12);
+
+
+    /*
+        Spawn rate increases
+    */
+
+    const difficulty =
+        Math.min(1,elapsed/GAME_TIME);
+
+    const spawnInterval =
+        0.95 -
+        difficulty*0.45;
+
+    spawnTimer += dt;
+
+    if(spawnTimer >= spawnInterval){
+
+        spawnTimer = 0;
+
+        spawnObstacle();
+
+    }
+
+
+    /*
+        Obstacles
+    */
+
+    for(let i=obstacles.length-1;i>=0;i--){
+
+        const o =
+            obstacles[i];
+
+        o.y +=
+            o.speed*dt;
+
+        /*
+            Passed obstacle
+        */
+
+        if(o.y > H+120){
+
+            obstacles.splice(i,1);
+
+            score += 100;
+
+            showBrainrot(
+                "+100 DODGED 🔥"
+            );
+
+            continue;
+
+        }
+
+
+        /*
+            Collision
+
+            Player occupies bottom area.
+        */
+
+        const playerY =
+            H-135;
+
+        const playerLeft =
+            player.x-player.width/2;
+
+        const playerRight =
+            player.x+player.width/2;
+
+        const playerTop =
+            playerY;
+
+        const playerBottom =
+            playerY+player.height;
+
+
+        const obstacleX =
+            laneX(o.lane);
+
+        const obstacleLeft =
+            obstacleX-o.width/2;
+
+        const obstacleRight =
+            obstacleX+o.width/2;
+
+        const obstacleTop =
+            o.y;
+
+        const obstacleBottom =
+            o.y+o.height;
+
+
+        if(
+
+            playerRight > obstacleLeft &&
+            playerLeft < obstacleRight &&
+            playerBottom > obstacleTop &&
+            playerTop < obstacleBottom
+
+        ){
+
+            finishGame(
+                "YOU GOT BONKED 💀"
+            );
+
+            return;
+
+        }
+
+    }
+
+
+    /*
+        Occasionally brainrot messages
+    */
+
+    if(
+        Math.random() <
+        dt*0.35
+    ){
+
+        const messages = [
+
+            "LOCK IN 💀",
+
+            "BRO MOVE 😭",
+
+            "USE YOUR HEAD",
+
+            "NAHHHH 💀",
+
+            "WHY ARE YOU THERE",
+
+            "ABSOLUTE CINEMA",
+
+            "BRAIN = COOKED",
+
+            "DODGE ITTT",
+
+            "GYATT OF DESTRUCTION",
+
+            "FOCUS 😭"
+
+        ];
+
+        showBrainrot(
+            messages[
+                Math.floor(
+                    Math.random()*
+                    messages.length
+                )
+            ]
+        );
+
+    }
+
+
+    scoreEl.textContent =
+        Math.floor(score);
+
+}
+
+
+/* =========================================================
+   FINISH GAME
+========================================================= */
+
+async function finishGame(reason){
+
+    if(gameFinished)
+        return;
+
+    gameFinished = true;
+    gameRunning = false;
+
+    const final =
+        Math.floor(score);
+
+    finalScore.textContent =
+        final.toLocaleString();
+
+    resultText.textContent =
+        reason;
+
+    gameOverScreen.style.display =
+        "flex";
+
+
+    /*
+        Submit score to server.
+    */
+
+    try{
+
+        const response =
+            await fetch("/api/score",{
+
+                method:"POST",
+
+                headers:{
+                    "Content-Type":
+                    "application/json"
+                },
+
+                body:JSON.stringify({
+
+                    action:"submit",
+
+                    runId,
+
+                    score:final,
+
+                    elapsed:
+
+                        Math.min(
+                            elapsed,
+                            GAME_TIME
+                        ),
+
+                    obstaclesAvoided:
+                        Math.max(
+                            0,
+                            Math.floor(
+                                final/100
+                            )
+                        )
+
+                })
+
+            });
+
+        const data =
+            await response.json();
+
+        if(data.accepted){
+
+            resultText.textContent +=
+                " • SAVED: PERSONAL BEST";
+
+        }else if(data.personalBest){
+
+            resultText.textContent +=
+                " • PERSONAL BEST: "+
+                data.personalBest;
+
+        }
+
+    }catch(error){
+
+        console.warn(
+            "Could not save score."
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   DRAW
+========================================================= */
+
+function draw(){
+
+    /*
+        Background
+    */
+
+    const gradient =
+        ctx.createLinearGradient(
+            0,0,0,H
+        );
+
+    gradient.addColorStop(
+        0,
+        "#16001e"
+    );
+
+    gradient.addColorStop(
+        1,
+        "#000"
+    );
+
+    ctx.fillStyle =
+        gradient;
+
+    ctx.fillRect(
+        0,
+        0,
+        W,
+        H
+    );
+
+
+    /*
+        Stars / particles
+    */
+
+    for(let i=0;i<55;i++){
+
+        const x =
+            (i*173)%W;
+
+        const y =
+            ((i*97+
+            elapsed*35)%H);
+
+        ctx.fillStyle =
+            "rgba(255,255,255,.15)";
+
+        ctx.fillRect(
+            x,
+            y,
+            2,
+            2
+        );
+
+    }
+
+
+    /*
+        Track
+    */
+
+    const horizon =
+        H*0.30;
+
+    const bottom =
+        H;
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        W*.18,
+        bottom
+    );
+
+    ctx.lineTo(
+        W*.42,
+        horizon
+    );
+
+    ctx.lineTo(
+        W*.58,
+        horizon
+    );
+
+    ctx.lineTo(
+        W*.82,
+        bottom
+    );
+
+    ctx.closePath();
+
+    ctx.fillStyle =
+        "#101010";
+
+    ctx.fill();
+
+
+    /*
+        Track borders
+    */
+
+    ctx.strokeStyle =
+        "#ff00d4";
+
+    ctx.lineWidth = 4;
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        W*.18,
+        bottom
+    );
+
+    ctx.lineTo(
+        W*.42,
+        horizon
+    );
+
+    ctx.stroke();
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        W*.82,
+        bottom
+    );
+
+    ctx.lineTo(
+        W*.58,
+        horizon
+    );
+
+    ctx.stroke();
+
+
+    /*
+        Lane separators
+    */
+
+    for(let lane=0;lane<2;lane++){
+
+        const topX =
+            W*(.42+
+                lane*.08);
+
+        const bottomX =
+            W*(.38+
+                lane*.24);
+
+        ctx.strokeStyle =
+            "rgba(255,255,255,.25)";
+
+        ctx.lineWidth = 2;
+
+        ctx.setLineDash([
+            15,
+            15
+        ]);
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            topX,
+            horizon
+        );
+
+        ctx.lineTo(
+            bottomX,
+            bottom
+        );
+
+        ctx.stroke();
+
+        ctx.setLineDash([]);
+
+    }
+
+
+    /*
+        Perspective lines
+    */
+
+    for(let i=0;i<8;i++){
+
+        const y =
+            horizon +
+            (
+                (i*100+
+                elapsed*180)
+                % (H-horizon)
+            );
+
+        const progress =
+            (y-horizon)/
+            (H-horizon);
+
+        const left =
+            W*.42 -
+            progress*W*.24;
+
+        const right =
+            W*.58 +
+            progress*W*.24;
+
+        ctx.strokeStyle =
+            "rgba(255,255,255,.07)";
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            left,
+            y
+        );
+
+        ctx.lineTo(
+            right,
+            y
+        );
+
+        ctx.stroke();
+
+    }
+
+
+    /*
+        Obstacles
+    */
+
+    for(const o of obstacles){
+
+        drawObstacle(o);
+
+    }
+
+
+    /*
+        Player
+    */
+
+    drawPlayer();
+
+}
+
+
+/* =========================================================
+   DRAW OBSTACLE
+========================================================= */
+
+function drawObstacle(o){
+
+    const x =
+        laneX(o.lane);
+
+    const y =
+        o.y;
+
+    ctx.save();
+
+    ctx.translate(
+        x,
+        y
+    );
+
+    /*
+        Glow
+    */
+
+    ctx.shadowColor =
+        "#ff00d4";
+
+    ctx.shadowBlur =
+        18;
+
+    /*
+        Rock
+    */
+
+    ctx.fillStyle =
+        "#ff00d4";
+
+    ctx.beginPath();
+
+    ctx.moveTo(-42,35);
+    ctx.lineTo(-35,-25);
+    ctx.lineTo(-5,-45);
+    ctx.lineTo(35,-25);
+    ctx.lineTo(45,25);
+    ctx.lineTo(15,45);
+    ctx.lineTo(-25,42);
+
+    ctx.closePath();
+
+    ctx.fill();
+
+
+    /*
+        Face
+    */
+
+    ctx.shadowBlur = 0;
+
+    ctx.fillStyle =
+        "#000";
+
+    ctx.fillRect(
+        -25,
+        -5,
+        12,
+        10
+    );
+
+    ctx.fillRect(
+        13,
+        -5,
+        12,
+        10
+    );
+
+    ctx.fillRect(
+        -15,
+        18,
+        30,
+        7
+    );
+
+    ctx.restore();
+
+}
+
+
+/* =========================================================
+   DRAW PLAYER
+========================================================= */
+
+function drawPlayer(){
+
+    const y =
+        H-135;
+
+    ctx.save();
+
+    ctx.translate(
+        player.x,
+        y
+    );
+
+
+    /*
+        Shadow
+    */
+
+    ctx.fillStyle =
+        "rgba(0,0,0,.5)";
+
+    ctx.beginPath();
+
+    ctx.ellipse(
+        0,
+        80,
+        42,
+        10,
+        0,
+        0,
+        Math.PI*2
+    );
+
+    ctx.fill();
+
+
+    /*
+        Glow
+    */
+
+    ctx.shadowColor =
+        "#00ffff";
+
+    ctx.shadowBlur =
+        20;
+
+
+    /*
+        Body
+    */
+
+    ctx.fillStyle =
+        "#00ffff";
+
+    ctx.fillRect(
+        -18,
+        20,
+        36,
+        45
+    );
+
+
+    /*
+        Head
+    */
+
+    ctx.fillStyle =
+        "#ffe600";
+
+    ctx.beginPath();
+
+    ctx.arc(
+        0,
+        0,
+        25,
+        0,
+        Math.PI*2
+    );
+
+    ctx.fill();
+
+
+    /*
+        Eyes
+    */
+
+    ctx.shadowBlur = 0;
+
+    ctx.fillStyle =
+        "#000";
+
+    ctx.fillRect(
+        -12,
+        -5,
+        7,
+        8
+    );
+
+    ctx.fillRect(
+        5,
+        -5,
+        7,
+        8
+    );
+
+
+    /*
+        Legs
+    */
+
+    ctx.strokeStyle =
+        "#ff00d4";
+
+    ctx.lineWidth = 12;
+
+    ctx.lineCap =
+        "round";
+
+    const running =
+        Math.sin(
+            elapsed*15
+        )*12;
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        -10,
+        65
+    );
+
+    ctx.lineTo(
+        -20-running,
+        90
+    );
+
+    ctx.stroke();
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        10,
+        65
+    );
+
+    ctx.lineTo(
+        20+running,
+        90
+    );
+
+    ctx.stroke();
+
+
+    ctx.restore();
+
+}
+
+
+/* =========================================================
+   BRAINROT MESSAGE
+========================================================= */
+
+let brainrotTimeout = null;
+
+function showBrainrot(text){
+
+    brainrot.textContent =
+        text;
+
+    brainrot.style.opacity =
+        "1";
+
+    clearTimeout(
+        brainrotTimeout
+    );
+
+    brainrotTimeout =
+        setTimeout(()=>{
+
+            brainrot.style.opacity =
+                "0";
+
+        },650);
+
+}
+
+
+/* =========================================================
+   GAME LOOP
+========================================================= */
+
+function gameLoop(now){
+
+    if(!gameRunning){
+
+        draw();
+
+        return;
+
+    }
+
+    const dt =
+        Math.min(
+            0.04,
+            (now-lastFrame)/1000
+        );
+
+    lastFrame =
+        now;
+
+    updateGame(dt);
+
+    draw();
+
+    if(gameRunning){
+
+        requestAnimationFrame(
+            gameLoop
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   INITIALIZATION
+========================================================= */
+
+async function initialize(){
+
+    draw();
+
+    /*
+        Start both asynchronously.
+    */
+
+    setupCamera();
+
+    setupFaceTracking();
+
+    detectFace();
+
+}
+
+initialize();
+
+</script>
+
+</body>
+</html>
